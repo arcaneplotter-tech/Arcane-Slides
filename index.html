@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcane slides - AI Presentation Builder</title>
+    <!-- Tailwind + Animate.css for extra polish -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        scroll-behavior: smooth;
+      }
+      input[type="color"] {
+        -webkit-appearance: none;
+        border: none;
+        padding: 0;
+        overflow: hidden;
+      }
+      input[type="color"]::-webkit-color-swatch-wrapper {
+        padding: 0;
+      }
+      input[type="color"]::-webkit-color-swatch {
+        border: none;
+        border-radius: 0.25rem;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      /* fade / slide transitions */
+      .fade-in {
+        animation: fadeIn 0.4s ease-in-out;
+      }
+      @keyframes fadeIn {
+        0% { opacity: 0; transform: translateY(8px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      .hover-lift {
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+      }
+      .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px -10px rgba(0,0,0,0.1);
+      }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "pptxgenjs": "https://esm.sh/pptxgenjs@^3.12.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.564.0",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+      import React, { useState } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { UploadCloud, FileText, Play, Check, Copy, Sparkles, LayoutTemplate, Download, ChevronLeft, Edit2, Image as ImageIcon, Palette, Layers, BarChart3, PieChart, Users, List, Grid } from 'lucide-react';
+      import PptxGenJS from 'pptxgenjs';
+
+      // --- TYPES & CONSTANTS (EXPANDED TO 100+ PROFESSIONAL SLIDES) ---
+      const SlideType = {
+        // ========== 1. BASICS (10) ==========
+        TITLE: 'Title',
+        AGENDA: 'Agenda',
+        SECTION_HEADER: 'SectionHeader',
+        STATEMENT: 'Statement',
+        QUOTE: 'Quote',
+        QUOTE_LARGE: 'QuoteLarge',
+        CONTACT: 'Contact',
+        THANK_YOU: 'ThankYou',
+        INTRO: 'Intro',
+        SUMMARY: 'Summary',
+
+        // ========== 2. LISTS & TEXT (15) ==========
+        BULLET_POINTS: 'BulletPoints',
+        TWO_COLUMN: 'TwoColumn',
+        THREE_COLUMN: 'ThreeColumn',
+        FOUR_COLUMN: 'FourColumn',
+        FIVE_COLUMN: 'FiveColumn',
+        SIX_COLUMN: 'SixColumn',
+        SEVEN_COLUMN: 'SevenColumn',
+        CHECKLIST: 'Checklist',
+        FAQ: 'FAQ',
+        PROS_CONS: 'ProsCons',
+        PROBLEM_SOLUTION: 'ProblemSolution',
+        FEATURE_LIST: 'FeatureList',
+        HIGHLIGHT_LIST: 'HighlightList',
+        DEFINITION_LIST: 'DefinitionList',
+        STICKY_NOTES: 'StickyNotes',
+
+        // ========== 3. DATA & NUMBERS (15) ==========
+        BIG_NUMBER: 'BigNumber',
+        STATISTICS_3: 'Statistics3',
+        STATISTICS_4: 'Statistics4',
+        STATISTICS_5: 'Statistics5',
+        STATISTICS_6: 'Statistics6',
+        STATISTICS_7: 'Statistics7',
+        KPI_DASHBOARD: 'KpiDashboard',
+        PRICING_TABLE: 'PricingTable',
+        TABLE: 'Table',
+        COMPARISON_TABLE: 'ComparisonTable',
+        METER_GAUGE: 'MeterGauge',
+        PROGRESS_BAR: 'ProgressBar',
+        TREND_INDICATOR: 'TrendIndicator',
+        HEATMAP: 'Heatmap',
+        BUBBLE_CHART: 'BubbleChart',
+
+        // ========== 4. CHARTS (Actual PPTX Charts) (10) ==========
+        BAR_CHART: 'BarChart',
+        PIE_CHART: 'PieChart',
+        DONUT_CHART: 'DonutChart',
+        LINE_CHART: 'LineChart',
+        AREA_CHART: 'AreaChart',
+        RADAR_CHART: 'RadarChart',
+        SCATTER_CHART: 'ScatterChart',
+        STACKED_BAR: 'StackedBar',
+        WATERFALL: 'Waterfall',
+        HISTOGRAM: 'Histogram',
+
+        // ========== 5. PROCESS & FLOW (15) ==========
+        TIMELINE: 'Timeline',
+        ROADMAP: 'Roadmap',
+        PROCESS_STEPS: 'ProcessSteps',
+        PROCESS_3_CIRCLES: 'Process3Circles',
+        PROCESS_4_CIRCLES: 'Process4Circles',
+        PROCESS_5_CIRCLES: 'Process5Circles',
+        PROCESS_6_CIRCLES: 'Process6Circles',
+        CYCLE: 'Cycle',
+        FLOWCHART: 'Flowchart',
+        FUNNEL: 'Funnel',
+        PYRAMID: 'Pyramid',
+        GANTT: 'Gantt',
+        MILESTONE: 'Milestone',
+        STEP_DIAGRAM: 'StepDiagram',
+        CONVERGENCE: 'Convergence',
+
+        // ========== 6. STRATEGY & DIAGRAMS (15) ==========
+        SWOT: 'SWOT',
+        MATRIX: 'Matrix', // 2x2
+        VENN_DIAGRAM: 'VennDiagram',
+        FISHBONE: 'Fishbone',
+        ORG_CHART: 'OrgChart',
+        TREE_DIAGRAM: 'TreeDiagram',
+        COMPARISON: 'Comparison',
+        COMPARISON_3: 'Comparison3',
+        COMPARISON_4: 'Comparison4',
+        STAKEHOLDER_MAP: 'StakeholderMap',
+        PRIORITY_MATRIX: 'PriorityMatrix',
+        BCG_MATRIX: 'BCGMatrix',
+        ANSOFF_MATRIX: 'AnsoffMatrix',
+        PORTERS_FIVE: 'PortersFive',
+        BUSINESS_CANVAS: 'BusinessCanvas',
+
+        // ========== 7. IMAGERY & TEAM (20) ==========
+        PHOTO_LEFT: 'PhotoLeft',
+        PHOTO_RIGHT: 'PhotoRight',
+        PHOTO_TOP: 'PhotoTop',
+        PHOTO_BOTTOM: 'PhotoBottom',
+        TWO_PHOTO: 'TwoPhoto',
+        THREE_PHOTO: 'ThreePhoto',
+        FOUR_PHOTO_GRID: 'FourPhotoGrid',
+        GALLERY: 'Gallery',
+        TEAM_MEMBER: 'TeamMember',
+        TEAM_GRID: 'TeamGrid',
+        TEAM_2x2: 'Team2x2',
+        TEAM_3x3: 'Team3x3',
+        MOCKUP_LAPTOP: 'MockupLaptop',
+        MOCKUP_PHONE: 'MockupPhone',
+        MOCKUP_TABLET: 'MockupTablet',
+        MOCKUP_DESKTOP: 'MockupDesktop',
+        LOGO_WALL: 'LogoWall',
+        AWARDS: 'Awards',
+        CERTIFICATIONS: 'Certifications',
+        OFFICE_PHOTO: 'OfficePhoto',
+
+        // ========== 8. NEW STRATEGY & DATA TYPES (ADDING 15 MORE) ==========
+        PARETO_CHART: 'ParetoChart',
+        CASCADE_CHART: 'CascadeChart',
+        SPIDER_CHART: 'SpiderChart',
+        TREEMAP: 'Treemap',
+        SUNBURST: 'Sunburst',
+        SANKEY: 'Sankey',
+        WATER_CYCLE: 'WaterCycle',
+        PDCA: 'PDCA',
+        KAIZEN: 'Kaizen',
+        SIX_SIGMA: 'SixSigma',
+        DMAIC: 'DMAIC',
+        SIPOC: 'SIPOC',
+        RACI: 'RACI',
+        KANBAN: 'Kanban',
+        SCRUM: 'Scrum',
+
+        // ========== 9. NEW FINANCIAL & METRICS (ADDING 10 MORE) ==========
+        BALANCE_SHEET: 'BalanceSheet',
+        INCOME_STATEMENT: 'IncomeStatement',
+        CASH_FLOW: 'CashFlow',
+        ROI_CHART: 'ROIChart',
+        BREAK_EVEN: 'BreakEven',
+        BURN_RATE: 'BurnRate',
+        COHORT: 'Cohort',
+        LTV_CAC: 'LTV_CAC',
+        CHURN_RATE: 'ChurnRate',
+        MRR_GRAPH: 'MRRGraph'
+      };
+
+      // --- CSV PARSER SERVICE (updated to recognize all new types) ---
+      const parseCSVRaw = (text) => {
+        const rows = [];
+        let currentRow = [];
+        let currentVal = '';
+        let inQuote = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const nextChar = text[i + 1];
+
+          if (inQuote) {
+            if (char === '"' && nextChar === '"') {
+              currentVal += '"';
+              i++; 
+            } else if (char === '"') {
+              inQuote = false;
+            } else {
+              currentVal += char;
+            }
+          } else {
+            if (char === '"') {
+              inQuote = true;
+            } else if (char === ',') {
+              currentRow.push(currentVal); 
+              currentVal = '';
+            } else if (char === '\n' || char === '\r') {
+              if (currentVal || currentRow.length > 0) {
+                currentRow.push(currentVal);
+                rows.push(currentRow);
+              }
+              currentRow = [];
+              currentVal = '';
+              if (char === '\r' && nextChar === '\n') i++;
+            } else {
+              currentVal += char;
+            }
+          }
+        }
+        
+        if (currentVal || currentRow.length > 0) {
+          currentRow.push(currentVal);
+          rows.push(currentRow);
+        }
+
+        return rows;
+      };
+
+      const parseCsvData = async (csvText) => {
+        const rows = parseCSVRaw(csvText);
+        
+        if (rows.length === 0) {
+          throw new Error("CSV file is empty");
+        }
+
+        const header = rows[0].map(h => h.toLowerCase().trim());
+        let dataRows = rows;
+        let typeIdx = 0;
+        let titleIdx = 1;
+        let contentIdx = 2;
+
+        if (header.includes('type') && header.includes('title')) {
+          typeIdx = header.indexOf('type');
+          titleIdx = header.indexOf('title');
+          contentIdx = header.indexOf('content');
+          dataRows = rows.slice(1);
+        }
+
+        const slides = dataRows.map((row, index) => {
+          if (row.length < 2) return null;
+
+          const typeRaw = row[typeIdx]?.trim() || 'BulletPoints';
+          const title = row[titleIdx]?.trim() || 'Untitled Slide';
+          const contentRaw = row[contentIdx]?.trim() || '';
+
+          // Normalize type string
+          const t = typeRaw.toLowerCase().replace(/[\s\-_]+/g, '');
+          let type = SlideType.BULLET_POINTS;
+
+          // ----- MASSIVE MATCHING FOR 100+ SLIDES -----
+          // Basics
+          if (t.includes('title')) type = SlideType.TITLE;
+          else if (t.includes('agenda')) type = SlideType.AGENDA;
+          else if (t.includes('section')) type = SlideType.SECTION_HEADER;
+          else if (t.includes('statement')) type = SlideType.STATEMENT;
+          else if (t.includes('quotelarge')) type = SlideType.QUOTE_LARGE;
+          else if (t.includes('quote')) type = SlideType.QUOTE;
+          else if (t.includes('thank')) type = SlideType.THANK_YOU;
+          else if (t.includes('contact')) type = SlideType.CONTACT;
+          else if (t.includes('intro')) type = SlideType.INTRO;
+          else if (t.includes('summary')) type = SlideType.SUMMARY;
+
+          // Lists (new high-column)
+          else if (t.includes('sevencol')) type = SlideType.SEVEN_COLUMN;
+          else if (t.includes('sixcol')) type = SlideType.SIX_COLUMN;
+          else if (t.includes('fivecol')) type = SlideType.FIVE_COLUMN;
+          else if (t.includes('fourcol')) type = SlideType.FOUR_COLUMN;
+          else if (t.includes('threecol')) type = SlideType.THREE_COLUMN;
+          else if (t.includes('twocol')) type = SlideType.TWO_COLUMN;
+          else if (t.includes('checklist')) type = SlideType.CHECKLIST;
+          else if (t.includes('faq')) type = SlideType.FAQ;
+          else if (t.includes('problem') && t.includes('solution')) type = SlideType.PROBLEM_SOLUTION;
+          else if (t.includes('feature')) type = SlideType.FEATURE_LIST;
+          else if (t.includes('pros') || t.includes('cons')) type = SlideType.PROS_CONS;
+          else if (t.includes('highlightlist')) type = SlideType.HIGHLIGHT_LIST;
+          else if (t.includes('definitionlist')) type = SlideType.DEFINITION_LIST;
+          else if (t.includes('stickynotes')) type = SlideType.STICKY_NOTES;
+          else if (t.includes('bullet')) type = SlideType.BULLET_POINTS;
+
+          // Data & numbers
+          else if (t.includes('bignum')) type = SlideType.BIG_NUMBER;
+          else if (t.includes('stat7')) type = SlideType.STATISTICS_7;
+          else if (t.includes('stat6')) type = SlideType.STATISTICS_6;
+          else if (t.includes('stat5')) type = SlideType.STATISTICS_5;
+          else if (t.includes('stat4')) type = SlideType.STATISTICS_4;
+          else if (t.includes('stat3')) type = SlideType.STATISTICS_3;
+          else if (t.includes('kpi') || t.includes('dashboard')) type = SlideType.KPI_DASHBOARD;
+          else if (t.includes('pricing')) type = SlideType.PRICING_TABLE;
+          else if (t.includes('comparisontable')) type = SlideType.COMPARISON_TABLE;
+          else if (t.includes('table')) type = SlideType.TABLE;
+          else if (t.includes('metergauge') || t.includes('gauge')) type = SlideType.METER_GAUGE;
+          else if (t.includes('progressbar')) type = SlideType.PROGRESS_BAR;
+          else if (t.includes('trendindicator')) type = SlideType.TREND_INDICATOR;
+          else if (t.includes('heatmap')) type = SlideType.HEATMAP;
+          else if (t.includes('bubblechart')) type = SlideType.BUBBLE_CHART;
+
+          // Charts
+          else if (t.includes('donut')) type = SlideType.DONUT_CHART;
+          else if (t.includes('pie')) type = SlideType.PIE_CHART;
+          else if (t.includes('radar')) type = SlideType.RADAR_CHART;
+          else if (t.includes('scatter')) type = SlideType.SCATTER_CHART;
+          else if (t.includes('stackedbar')) type = SlideType.STACKED_BAR;
+          else if (t.includes('waterfall')) type = SlideType.WATERFALL;
+          else if (t.includes('histogram')) type = SlideType.HISTOGRAM;
+          else if (t.includes('bar')) type = SlideType.BAR_CHART;
+          else if (t.includes('line')) type = SlideType.LINE_CHART;
+          else if (t.includes('area')) type = SlideType.AREA_CHART;
+
+          // Process
+          else if (t.includes('roadmap')) type = SlideType.ROADMAP;
+          else if (t.includes('timeline')) type = SlideType.TIMELINE;
+          else if (t.includes('process6')) type = SlideType.PROCESS_6_CIRCLES;
+          else if (t.includes('process5')) type = SlideType.PROCESS_5_CIRCLES;
+          else if (t.includes('process4')) type = SlideType.PROCESS_4_CIRCLES;
+          else if (t.includes('process3')) type = SlideType.PROCESS_3_CIRCLES;
+          else if (t.includes('process')) type = SlideType.PROCESS_STEPS;
+          else if (t.includes('cycle')) type = SlideType.CYCLE;
+          else if (t.includes('flow')) type = SlideType.FLOWCHART;
+          else if (t.includes('funnel')) type = SlideType.FUNNEL;
+          else if (t.includes('pyramid')) type = SlideType.PYRAMID;
+          else if (t.includes('gantt')) type = SlideType.GANTT;
+          else if (t.includes('milestone')) type = SlideType.MILESTONE;
+          else if (t.includes('stepdiagram')) type = SlideType.STEP_DIAGRAM;
+          else if (t.includes('convergence')) type = SlideType.CONVERGENCE;
+
+          // Diagrams & Strategy
+          else if (t.includes('swot')) type = SlideType.SWOT;
+          else if (t.includes('matrix') && t.includes('priority')) type = SlideType.PRIORITY_MATRIX;
+          else if (t.includes('matrix') && t.includes('bcg')) type = SlideType.BCG_MATRIX;
+          else if (t.includes('matrix') && t.includes('ansoff')) type = SlideType.ANSOFF_MATRIX;
+          else if (t.includes('matrix')) type = SlideType.MATRIX;
+          else if (t.includes('venn')) type = SlideType.VENN_DIAGRAM;
+          else if (t.includes('fish')) type = SlideType.FISHBONE;
+          else if (t.includes('org')) type = SlideType.ORG_CHART;
+          else if (t.includes('tree')) type = SlideType.TREE_DIAGRAM;
+          else if (t.includes('compare4')) type = SlideType.COMPARISON_4;
+          else if (t.includes('compare3')) type = SlideType.COMPARISON_3;
+          else if (t.includes('compare') || t.includes('comparison')) type = SlideType.COMPARISON;
+          else if (t.includes('stakeholder')) type = SlideType.STAKEHOLDER_MAP;
+          else if (t.includes('porter') || t.includes('fiveforces')) type = SlideType.PORTERS_FIVE;
+          else if (t.includes('businesscanvas') || t.includes('canva')) type = SlideType.BUSINESS_CANVAS;
+
+          // Imagery (new)
+          else if (t.includes('photoleft')) type = SlideType.PHOTO_LEFT;
+          else if (t.includes('photoright')) type = SlideType.PHOTO_RIGHT;
+          else if (t.includes('phototop')) type = SlideType.PHOTO_TOP;
+          else if (t.includes('photobottom')) type = SlideType.PHOTO_BOTTOM;
+          else if (t.includes('fourphoto')) type = SlideType.FOUR_PHOTO_GRID;
+          else if (t.includes('threephoto')) type = SlideType.THREE_PHOTO;
+          else if (t.includes('twophoto')) type = SlideType.TWO_PHOTO;
+          else if (t.includes('gallery')) type = SlideType.GALLERY;
+          else if (t.includes('teamgrid')) type = SlideType.TEAM_GRID;
+          else if (t.includes('team2x2')) type = SlideType.TEAM_2x2;
+          else if (t.includes('team3x3')) type = SlideType.TEAM_3x3;
+          else if (t.includes('team')) type = SlideType.TEAM_MEMBER;
+          else if (t.includes('laptop')) type = SlideType.MOCKUP_LAPTOP;
+          else if (t.includes('phone') || t.includes('mobile')) type = SlideType.MOCKUP_PHONE;
+          else if (t.includes('tablet')) type = SlideType.MOCKUP_TABLET;
+          else if (t.includes('desktop')) type = SlideType.MOCKUP_DESKTOP;
+          else if (t.includes('logowall')) type = SlideType.LOGO_WALL;
+          else if (t.includes('award')) type = SlideType.AWARDS;
+          else if (t.includes('certification')) type = SlideType.CERTIFICATIONS;
+          else if (t.includes('officephoto')) type = SlideType.OFFICE_PHOTO;
+
+          // NEW STRATEGY & DATA TYPES
+          else if (t.includes('pareto')) type = SlideType.PARETO_CHART;
+          else if (t.includes('cascade')) type = SlideType.CASCADE_CHART;
+          else if (t.includes('spider') || t.includes('web')) type = SlideType.SPIDER_CHART;
+          else if (t.includes('treemap')) type = SlideType.TREEMAP;
+          else if (t.includes('sunburst')) type = SlideType.SUNBURST;
+          else if (t.includes('sankey')) type = SlideType.SANKEY;
+          else if (t.includes('watercycle') || t.includes('water cycle')) type = SlideType.WATER_CYCLE;
+          else if (t.includes('pdca')) type = SlideType.PDCA;
+          else if (t.includes('kaizen')) type = SlideType.KAIZEN;
+          else if (t.includes('sixsigma')) type = SlideType.SIX_SIGMA;
+          else if (t.includes('dmaic')) type = SlideType.DMAIC;
+          else if (t.includes('sipoc')) type = SlideType.SIPOC;
+          else if (t.includes('raci')) type = SlideType.RACI;
+          else if (t.includes('kanban')) type = SlideType.KANBAN;
+          else if (t.includes('scrum')) type = SlideType.SCRUM;
+
+          // NEW FINANCIAL & METRICS
+          else if (t.includes('balancesheet')) type = SlideType.BALANCE_SHEET;
+          else if (t.includes('incomestatement')) type = SlideType.INCOME_STATEMENT;
+          else if (t.includes('cashflow')) type = SlideType.CASH_FLOW;
+          else if (t.includes('roi')) type = SlideType.ROI_CHART;
+          else if (t.includes('breakeven')) type = SlideType.BREAK_EVEN;
+          else if (t.includes('burnrate')) type = SlideType.BURN_RATE;
+          else if (t.includes('cohort')) type = SlideType.COHORT;
+          else if (t.includes('ltv') || t.includes('cac')) type = SlideType.LTV_CAC;
+          else if (t.includes('churn')) type = SlideType.CHURN_RATE;
+          else if (t.includes('mrr')) type = SlideType.MRR_GRAPH;
+
+          let content = contentRaw.split(';').map(s => s.trim()).filter(s => s.length > 0);
+
+          return {
+            id: `slide-${index}-${Date.now()}`,
+            type,
+            title,
+            content
+          };
+        }).filter(s => s !== null);
+
+        if (slides.length === 0) {
+          throw new Error("No valid slides found in CSV.");
+        }
+
+        return slides;
+      };
+
+      // --- PPTX SERVICE (expanded with all new types + RICH TEXT PARSING) ---
+      const generatePptx = async (slides, config) => {
+        const pptx = new PptxGenJS();
+        
+        pptx.layout = 'LAYOUT_16x9';
+        pptx.title = slides[0]?.title || "Presentation";
+
+        let colors = {
+          primary: "0F172A", 
+          secondary: "334155", 
+          text: "334155",
+          bg: "FFFFFF",
+          accent: "F1F5F9", 
+          placeholder: "E2E8F0",
+          placeholderText: "94A3B8",
+          highlight: "FEF9C3"
+        };
+        let masterObjects = [];
+
+        switch(config.theme) {
+          case 'blue':
+             colors = { primary: "2563eb", secondary: "3b82f6", text: "1e293b", bg: "FFFFFF", accent: "eff6ff", placeholder: "dbeafe", placeholderText: "3b82f6", highlight: "fef9c3" };
+             masterObjects = [
+               { rect: { x: 0, y: 0, w: "100%", h: "1.5%", fill: { color: colors.primary } } }, 
+               { rect: { x: 0, y: "96%", w: "100%", h: "4%", fill: { color: "F8F9FA" } } },
+             ];
+             break;
+          case 'green':
+             colors = { primary: "16a34a", secondary: "22c55e", text: "14532d", bg: "FFFFFF", accent: "f0fdf4", placeholder: "dcfce7", placeholderText: "16a34a", highlight: "fef9c3" };
+             masterObjects = [
+               { rect: { x: 0, y: 0, w: "100%", h: "1.5%", fill: { color: colors.primary } } }, 
+               { rect: { x: 0, y: "96%", w: "100%", h: "4%", fill: { color: "F8F9FA" } } },
+             ];
+             break;
+          case 'red':
+             colors = { primary: "dc2626", secondary: "ef4444", text: "7f1d1d", bg: "FFFFFF", accent: "fef2f2", placeholder: "fee2e2", placeholderText: "dc2626", highlight: "fef9c3" };
+             masterObjects = [
+               { rect: { x: 0, y: 0, w: "100%", h: "1.5%", fill: { color: colors.primary } } }, 
+               { rect: { x: 0, y: "96%", w: "100%", h: "4%", fill: { color: "F8F9FA" } } },
+             ];
+             break;
+          case 'purple':
+             colors = { primary: "9333ea", secondary: "a855f7", text: "581c87", bg: "FFFFFF", accent: "faf5ff", placeholder: "f3e8ff", placeholderText: "9333ea", highlight: "fef9c3" };
+             masterObjects = [
+               { rect: { x: 0, y: 0, w: "100%", h: "1.5%", fill: { color: colors.primary } } }, 
+               { rect: { x: 0, y: "96%", w: "100%", h: "4%", fill: { color: "F8F9FA" } } },
+             ];
+             break;
+          case 'orange':
+             colors = { primary: "ea580c", secondary: "f97316", text: "7b341e", bg: "FFFFFF", accent: "fff7ed", placeholder: "ffedd5", placeholderText: "ea580c", highlight: "fef9c3" };
+             masterObjects = [
+               { rect: { x: 0, y: 0, w: "100%", h: "1.5%", fill: { color: colors.primary } } }, 
+               { rect: { x: 0, y: "96%", w: "100%", h: "4%", fill: { color: "F8F9FA" } } },
+             ];
+             break;
+          default:
+             colors = { primary: "2563eb", secondary: "3b82f6", text: "1e293b", bg: "FFFFFF", accent: "eff6ff", placeholder: "dbeafe", placeholderText: "3b82f6", highlight: "fef9c3" };
+             masterObjects = [
+               { rect: { x: 0, y: 0, w: "100%", h: "1.5%", fill: { color: colors.primary } } }, 
+               { rect: { x: 0, y: "96%", w: "100%", h: "4%", fill: { color: "F8F9FA" } } },
+             ];
+        }
+
+        if (config.customColors?.primary) colors.primary = config.customColors.primary.replace('#', '');
+        if (config.customColors?.secondary) colors.secondary = config.customColors.secondary.replace('#', '');
+
+        pptx.defineSlideMaster({
+          title: "MASTER_SLIDE",
+          background: { color: colors.bg },
+          objects: [
+            ...masterObjects,
+            { slideNumber: { x: "95%", y: "96.5%", fontSize: 10, color: "888888" } }
+          ]
+        });
+
+        const addPlaceholder = (slide, x, y, w, h, label = "IMG") => {
+          slide.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: colors.placeholder, line: { color: colors.placeholderText, width: 1, dashType: 'dash' } });
+          slide.addText(label, { x, y, w, h, align: 'center', fontSize: 14, color: colors.placeholderText });
+        };
+
+        const splitContent = (content, chunks) => {
+          const result = [];
+          const size = Math.ceil(content.length / chunks);
+          for (let i = 0; i < chunks; i++) {
+            result.push(content.slice(i * size, (i + 1) * size));
+          }
+          return result;
+        };
+
+        // ========== ENHANCED RICH TEXT FORMATTING ==========
+        // Parses **bold**, *italic*, ==highlight== and returns pptxgenjs text objects array.
+        const formatText = (lines) => {
+          if (!lines) return [];
+          const textObjects = [];
+          lines.forEach((line, i) => {
+            // Add bullet (if not a plain line without bullet? we always prefix with bullet for lists)
+            // But for pros/cons we handle separately. We'll keep bullet flexible.
+            // For lists, we want bullet prefix. We'll manage in calling context.
+            // This function now creates an array with optional bullet prefix if requested.
+            // We'll use a flag to add bullet or not. For simplicity, we assume bullet already added in caller.
+            // Actually we'll create a helper that returns pptx text fragments with bullet prefix.
+            const fragments = [];
+            // add bullet as first fragment
+            fragments.push({ text: "• ", options: { color: colors.text } });
+            
+            const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|==.*?==|[^*=]+)/g).filter(p => p && p.length > 0);
+            parts.forEach(part => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                fragments.push({ text: part.slice(2, -2), options: { bold: true, color: colors.primary } });
+              } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+                fragments.push({ text: part.slice(1, -1), options: { italic: true, color: colors.secondary } });
+              } else if (part.startsWith('==') && part.endsWith('==')) {
+                // highlight – simulate with background? pptxgenjs doesn't support inline highlight, but we can set highlight color via text background? Not directly. We'll use bold + color or just change background of text?
+                // pptxgenjs has highlight option? It does have 'highlight' but it's a color property? Actually it supports 'highlight' as a color property for text background.
+                // Let's set background color to highlight (light yellow) and keep text color.
+                fragments.push({ text: part.slice(2, -2), options: { bold: true, color: colors.text, highlight: colors.highlight } });
+              } else {
+                fragments.push({ text: part, options: { color: colors.text } });
+              }
+            });
+            if (i < lines.length - 1) {
+              fragments.push({ text: "", options: { breakLine: true } });
+            }
+            textObjects.push(...fragments);
+          });
+          return textObjects;
+        };
+
+        // For non‑list slides we might still use formatText but without bullet prefix.
+        const formatTextPlain = (lines) => {
+          if (!lines) return [];
+          const textObjects = [];
+          lines.forEach((line, i) => {
+            const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|==.*?==|[^*=]+)/g).filter(p => p && p.length > 0);
+            parts.forEach(part => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                textObjects.push({ text: part.slice(2, -2), options: { bold: true, color: colors.primary } });
+              } else if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
+                textObjects.push({ text: part.slice(1, -1), options: { italic: true, color: colors.secondary } });
+              } else if (part.startsWith('==') && part.endsWith('==')) {
+                textObjects.push({ text: part.slice(2, -2), options: { bold: true, color: colors.text, highlight: colors.highlight } });
+              } else {
+                textObjects.push({ text: part, options: { color: colors.text } });
+              }
+            });
+            if (i < lines.length - 1) {
+              textObjects.push({ text: "", options: { breakLine: true } });
+            }
+          });
+          return textObjects;
+        };
+
+        const getChartData = (content) => {
+          const labels = [];
+          const values = [];
+          content.forEach(c => {
+            const split = c.split(/[,:]/);
+            if (split.length >= 2) {
+              labels.push(split[0].trim());
+              const val = parseFloat(split[1].trim());
+              values.push(isNaN(val) ? 0 : val);
+            } else {
+              labels.push(c);
+              values.push(1);
+            }
+          });
+          return [{ name: "Series 1", labels, values }];
+        };
+
+        slides.forEach((slide) => {
+          const pptSlide = pptx.addSlide({ masterName: "MASTER_SLIDE" });
+          const titleOpts = { x: 0.5, y: 0.4, w: "90%", h: 0.8, fontSize: 32, bold: true, color: colors.primary };
+          const contentBaseOpts = { x: 0.5, y: 1.5, w: "90%", h: 4.5, fontSize: 18, color: colors.text, valign: "top", lineSpacing: 28 };
+
+          switch (slide.type) {
+            // Basics
+            case SlideType.TITLE:
+            case SlideType.INTRO:
+              pptSlide.addText(slide.title, { x: 1, y: "35%", w: "80%", h: 1.5, fontSize: 48, bold: true, color: colors.primary, align: "center" });
+              if (slide.content.length) pptSlide.addText(formatTextPlain(slide.content), { x: 1.5, y: "55%", w: "70%", fontSize: 24, color: colors.secondary, align: "center" });
+              break;
+            case SlideType.SECTION_HEADER:
+              pptSlide.background = { color: colors.primary };
+              pptSlide.addText(slide.title, { x: 0.5, y: "40%", w: "90%", fontSize: 44, bold: true, color: colors.bg, align: "center" });
+              if (slide.content.length) pptSlide.addText(slide.content.join(" • "), { x: 1, y: "60%", w: "80%", fontSize: 20, color: colors.accent, align: "center" });
+              break;
+            case SlideType.SUMMARY:
+              pptSlide.addText("Summary", titleOpts);
+              pptSlide.addText(formatText(slide.content.map(c => c)), contentBaseOpts);
+              break;
+            case SlideType.STATEMENT:
+               pptSlide.addText(slide.title, { x: 1, y: "40%", w: "80%", fontSize: 36, bold: true, color: colors.text, align: "center" });
+               break;
+            case SlideType.QUOTE_LARGE:
+            case SlideType.QUOTE:
+              pptSlide.addText("“", { x: 0.5, y: 1.5, fontSize: 80, color: colors.secondary });
+              pptSlide.addText(slide.title, { x: 1.2, y: 2, w: "75%", fontSize: 28, italic: true, color: colors.text });
+              if (slide.content.length) pptSlide.addText(`— ${slide.content[0]}`, { x: 1.2, y: 4, w: "75%", fontSize: 20, align: 'right', color: colors.secondary });
+              break;
+            case SlideType.AGENDA:
+              pptSlide.addText("Agenda", { ...titleOpts, fontSize: 36 });
+              pptSlide.addText(formatText(slide.content), { ...contentBaseOpts, fontSize: 22 });
+              break;
+            case SlideType.THANK_YOU:
+              pptSlide.background = { color: colors.primary };
+              pptSlide.addText("Thank You", { x: 0, y: "40%", w: "100%", fontSize: 60, bold: true, color: colors.bg, align: "center" });
+              if(slide.content.length) pptSlide.addText(slide.content[0], { x: 0, y: "60%", w: "100%", fontSize: 24, color: colors.bg, align: "center" });
+              break;
+            case SlideType.CONTACT:
+              pptSlide.addText("Contact Us", { x: 1, y: 1.5, fontSize: 36, bold: true, color: colors.primary });
+              pptSlide.addText(formatTextPlain(slide.content), { x: 1, y: 2.5, fontSize: 24, color: colors.text });
+              addPlaceholder(pptSlide, 6, 2, 3, 3, "Map / QR");
+              break;
+
+            // Lists (including new high-column)
+            case SlideType.BULLET_POINTS:
+            case SlideType.HIGHLIGHT_LIST:
+            case SlideType.FEATURE_LIST:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addText(formatText(slide.content), contentBaseOpts);
+              break;
+            case SlideType.TWO_COLUMN:
+            case SlideType.THREE_COLUMN:
+            case SlideType.FOUR_COLUMN:
+            case SlideType.FIVE_COLUMN:
+            case SlideType.SIX_COLUMN:
+            case SlideType.SEVEN_COLUMN:
+              pptSlide.addText(slide.title, titleOpts);
+              let colCount = 2;
+              if (slide.type === SlideType.THREE_COLUMN) colCount = 3;
+              else if (slide.type === SlideType.FOUR_COLUMN) colCount = 4;
+              else if (slide.type === SlideType.FIVE_COLUMN) colCount = 5;
+              else if (slide.type === SlideType.SIX_COLUMN) colCount = 6;
+              else if (slide.type === SlideType.SEVEN_COLUMN) colCount = 7;
+              else colCount = 2;
+              const cols = splitContent(slide.content, colCount);
+              const colWidth = 8.5 / colCount;
+              for (let i = 0; i < colCount; i++) {
+                pptSlide.addText(formatText(cols[i] || []), { ...contentBaseOpts, x: 0.5 + i * (colWidth + 0.1), w: colWidth, fontSize: Math.max(10, 18 - colCount) });
+              }
+              break;
+            case SlideType.CHECKLIST:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addText(formatText(slide.content.map(c => `✓ ${c}`)), { ...contentBaseOpts, color: colors.text });
+              break;
+            case SlideType.FAQ:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addText(formatTextPlain(slide.content.map((c, i) => (i%2===0 ? `Q: ${c}` : `A: ${c}`))), contentBaseOpts);
+              break;
+            case SlideType.PROS_CONS:
+              pptSlide.addText(slide.title, titleOpts);
+              const halves = splitContent(slide.content, 2);
+              pptSlide.addText("✓ Pros", { x: 0.5, y: 1.2, fontSize: 18, bold: true, color: colors.primary });
+              pptSlide.addText(formatTextPlain(halves[0] || []), { x: 0.5, y: 1.7, w: 4, fontSize: 16 });
+              pptSlide.addText("✗ Cons", { x: 5, y: 1.2, fontSize: 18, bold: true, color: colors.secondary });
+              pptSlide.addText(formatTextPlain(halves[1] || []), { x: 5, y: 1.7, w: 4, fontSize: 16 });
+              break;
+            case SlideType.PROBLEM_SOLUTION:
+              pptSlide.addText(slide.title, titleOpts);
+              const probSol = splitContent(slide.content, 2);
+              pptSlide.addText("Problem", { x: 0.5, y: 1.2, fontSize: 20, bold: true, color: colors.primary });
+              pptSlide.addText(formatTextPlain(probSol[0] || []), { x: 0.5, y: 1.7, w: 4, fontSize: 16 });
+              pptSlide.addText("Solution", { x: 5, y: 1.2, fontSize: 20, bold: true, color: colors.secondary });
+              pptSlide.addText(formatTextPlain(probSol[1] || []), { x: 5, y: 1.7, w: 4, fontSize: 16 });
+              break;
+            case SlideType.DEFINITION_LIST:
+              pptSlide.addText(slide.title, titleOpts);
+              slide.content.forEach((item, idx) => {
+                if (idx % 2 === 0) pptSlide.addText(item, { x: 0.5, y: 1.5 + idx * 0.3, fontSize: 16, bold: true });
+                else pptSlide.addText(item, { x: 2.5, y: 1.2 + idx * 0.3, fontSize: 14, color: colors.secondary });
+              });
+              break;
+            case SlideType.STICKY_NOTES:
+              pptSlide.addText(slide.title, titleOpts);
+              slide.content.slice(0, 6).forEach((note, i) => {
+                const x = 0.5 + (i % 3) * 2.8;
+                const y = 1.5 + Math.floor(i / 3) * 2;
+                pptSlide.addShape(pptx.ShapeType.rect, { x, y, w: 2.5, h: 1.8, fill: "FFE68F", rotate: (i % 3) * 2 });
+                pptSlide.addText(note, { x: x + 0.2, y: y + 0.2, w: 2.1, h: 1.4, fontSize: 12, color: "333333" });
+              });
+              break;
+
+            // Data & numbers
+            case SlideType.BIG_NUMBER:
+              pptSlide.addText(slide.title, { ...titleOpts, align: 'center' });
+              pptSlide.addText(slide.content[0] || "0", { x: 0, y: "35%", w: "100%", h: 2, fontSize: 120, bold: true, color: colors.primary, align: "center" });
+              if(slide.content[1]) pptSlide.addText(slide.content[1], { x: 0, y: "65%", w: "100%", fontSize: 24, align: "center", color: colors.secondary });
+              break;
+            case SlideType.STATISTICS_3:
+            case SlideType.STATISTICS_4:
+            case SlideType.STATISTICS_5:
+            case SlideType.STATISTICS_6:
+            case SlideType.STATISTICS_7:
+              pptSlide.addText(slide.title, titleOpts);
+              const cnt = slide.type === SlideType.STATISTICS_7 ? 7 : slide.type === SlideType.STATISTICS_6 ? 6 : slide.type === SlideType.STATISTICS_5 ? 5 : slide.type === SlideType.STATISTICS_4 ? 4 : 3;
+              const stats = splitContent(slide.content, cnt);
+              const statW = 8.5 / cnt;
+              stats.forEach((stat, i) => {
+                   const xPos = 0.5 + (i * statW);
+                   pptSlide.addText(stat[0] || "0%", { x: xPos, y: 2, w: statW - 0.2, fontSize: 40 - cnt*2, bold: true, color: colors.secondary, align: "center" });
+                   pptSlide.addText(stat.slice(1).join("\n"), { x: xPos, y: 3, w: statW - 0.2, fontSize: 12, align: "center", color: colors.text });
+              });
+              break;
+            case SlideType.PRICING_TABLE:
+            case SlideType.COMPARISON_TABLE:
+               pptSlide.addText(slide.title, titleOpts);
+               const plans = splitContent(slide.content, 3);
+               plans.forEach((plan, i) => {
+                  const x = 0.5 + (i * 3.1);
+                  pptSlide.addShape(pptx.ShapeType.rect, { x, y: 1.5, w: 2.8, h: 4, fill: i === 1 ? colors.accent : "FFFFFF", line: { color: colors.placeholder } });
+                  pptSlide.addText(plan[0] || "Plan", { x, y: 1.6, w: 2.8, fontSize: 18, bold: true, align: "center", color: colors.primary });
+                  pptSlide.addText(plan.slice(1).join("\n"), { x, y: 2.2, w: 2.8, fontSize: 14, align: "center" });
+               });
+               break;
+            case SlideType.METER_GAUGE:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addShape(pptx.ShapeType.arc, { x: 3, y: 2, w: 4, h: 2, fill: colors.placeholder, line: { color: colors.primary, width: 2 } });
+              pptSlide.addText(slide.content[0] || "75%", { x: 3.5, y: 2.5, fontSize: 36, bold: true, color: colors.primary });
+              break;
+            case SlideType.PROGRESS_BAR:
+              pptSlide.addText(slide.title, titleOpts);
+              slide.content.slice(0, 4).forEach((item, idx) => {
+                pptSlide.addText(item, { x: 0.5, y: 2 + idx * 0.8, w: 2, fontSize: 14 });
+                pptSlide.addShape(pptx.ShapeType.rect, { x: 3, y: 2 + idx * 0.8, w: 5 * (0.2 + idx * 0.2), h: 0.4, fill: colors.primary });
+              });
+              break;
+
+            // Charts
+            case SlideType.BAR_CHART:
+            case SlideType.STACKED_BAR:
+            case SlideType.HISTOGRAM:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addChart(pptx.ChartType.bar, getChartData(slide.content), { x: 1, y: 1.5, w: 8, h: 3.5, showLegend: false, barDir: 'col', chartColors: [colors.primary] });
+              break;
+            case SlideType.PIE_CHART:
+            case SlideType.DONUT_CHART:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addChart(slide.type === SlideType.DONUT_CHART ? pptx.ChartType.doughnut : pptx.ChartType.pie, getChartData(slide.content), { x: 2, y: 1.5, w: 6, h: 3.5 });
+              break;
+            case SlideType.LINE_CHART:
+            case SlideType.AREA_CHART:
+            case SlideType.RADAR_CHART:
+            case SlideType.SCATTER_CHART:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addChart(pptx.ChartType.line, getChartData(slide.content), { x: 1, y: 1.5, w: 8, h: 3.5, chartColors: [colors.secondary] });
+              break;
+            case SlideType.WATERFALL:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addText("Waterfall (simulated)", { x: 1, y: 2, fontSize: 24, color: colors.text });
+              break;
+
+            // Process
+            case SlideType.TIMELINE:
+            case SlideType.ROADMAP:
+            case SlideType.MILESTONE:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addShape(pptx.ShapeType.line, { x: 1, y: 3.5, w: 8, h: 0, line: { color: colors.secondary, width: 2 } });
+              slide.content.slice(0, 6).forEach((item, i) => {
+                  const xPos = 1 + (i * 1.4);
+                  pptSlide.addShape(pptx.ShapeType.ellipse, { x: xPos, y: 3.4, w: 0.2, h: 0.2, fill: colors.primary });
+                  pptSlide.addText(item, { x: xPos - 0.3, y: 3.7, w: 1.2, fontSize: 10, align: "center", color: colors.text });
+              });
+              break;
+            case SlideType.PROCESS_STEPS:
+            case SlideType.STEP_DIAGRAM:
+              pptSlide.addText(slide.title, titleOpts);
+              slide.content.slice(0, 6).forEach((step, i) => {
+                 const x = 0.5 + (i * 1.6);
+                 pptSlide.addShape(pptx.ShapeType.chevron, { x, y: 2.5, w: 1.5, h: 1.5, fill: colors.primary });
+                 pptSlide.addText(`${i+1}`, { x: x + 0.1, y: 2.6, fontSize: 18, bold: true, color: colors.bg });
+                 pptSlide.addText(step, { x: x + 0.2, y: 3.0, w: 1.3, fontSize: 10, color: colors.bg, align: "center" });
+              });
+              break;
+            case SlideType.PROCESS_3_CIRCLES:
+            case SlideType.PROCESS_4_CIRCLES:
+            case SlideType.PROCESS_5_CIRCLES:
+            case SlideType.PROCESS_6_CIRCLES:
+              pptSlide.addText(slide.title, titleOpts);
+              const circCnt = slide.type === SlideType.PROCESS_6_CIRCLES ? 6 : slide.type === SlideType.PROCESS_5_CIRCLES ? 5 : slide.type === SlideType.PROCESS_4_CIRCLES ? 4 : 3;
+              for (let i = 0; i < circCnt; i++) {
+                pptSlide.addShape(pptx.ShapeType.ellipse, { x: 1 + (i * 1.8), y: 2, w: 1.5, h: 1.5, fill: colors.accent, line: {color: colors.primary, width: 2} });
+                pptSlide.addText(slide.content[i] || "", { x: 1.2 + (i * 1.8), y: 2.2, w: 1.1, h: 1.1, fontSize: 10, align: "center" });
+              }
+              break;
+            case SlideType.CYCLE:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addShape(pptx.ShapeType.ellipse, { x: 3, y: 2, w: 3, h: 3, line: { color: colors.primary, width: 3 }, fill: colors.accent });
+              slide.content.slice(0, 4).forEach((item, i) => {
+                pptSlide.addText(item, { x: 3.5 + (i%2)*0.5, y: 2.5 + i*0.5, fontSize: 12 });
+              });
+              break;
+            case SlideType.FUNNEL:
+            case SlideType.PYRAMID:
+              pptSlide.addText(slide.title, titleOpts);
+              slide.content.slice(0, 4).forEach((item, i) => {
+                  const w = 6 - (i * 1.2);
+                  pptSlide.addShape(pptx.ShapeType.trapezoid, { x: (10 - w) / 2, y: 1.5 + (i * 1.2), w: w, h: 1, fill: i === 2 ? colors.primary : colors.secondary, flipV: slide.type === SlideType.PYRAMID ? false : true });
+                  pptSlide.addText(item, { x: (10 - w) / 2, y: 1.5 + (i * 1.2), w: w, h: 1, align: "center", fontSize: 12, color: colors.bg });
+              });
+              break;
+            case SlideType.GANTT:
+              pptSlide.addText(slide.title, titleOpts);
+              for (let i = 0; i < 5; i++) {
+                pptSlide.addShape(pptx.ShapeType.rect, { x: 2, y: 2 + i*0.5, w: 4 + i, h: 0.3, fill: colors.primary });
+              }
+              break;
+
+            // Diagrams
+            case SlideType.SWOT:
+              pptSlide.addText(slide.title, titleOpts);
+              const swotParts = splitContent(slide.content, 4);
+              const swotLabels = ["Strengths", "Weaknesses", "Opportunities", "Threats"];
+              [0, 1, 2, 3].forEach(i => {
+                 const x = i % 2 === 0 ? 1 : 5.2;
+                 const y = i < 2 ? 1.5 : 3.6;
+                 pptSlide.addShape(pptx.ShapeType.rect, { x, y, w: 4, h: 1.9, fill: colors.accent });
+                 pptSlide.addText(swotLabels[i], { x: x + 0.2, y: y + 0.1, fontSize: 14, bold: true, color: colors.primary });
+                 pptSlide.addText(swotParts[i]?.join("\n") || "", { x: x + 0.2, y: y + 0.5, w: 3.6, h: 1.3, fontSize: 10, color: colors.text });
+              });
+              break;
+            case SlideType.MATRIX:
+            case SlideType.PRIORITY_MATRIX:
+            case SlideType.BCG_MATRIX:
+            case SlideType.ANSOFF_MATRIX:
+               pptSlide.addText(slide.title, titleOpts);
+               const matrixItems = slide.content.slice(0, 4);
+               [0, 1].forEach(row => {
+                  [0, 1].forEach(col => {
+                      const idx = row * 2 + col;
+                      const item = matrixItems[idx] || "";
+                      const bg = idx === 0 ? colors.primary : idx === 3 ? colors.primary : colors.accent;
+                      const txt = idx === 0 || idx === 3 ? colors.bg : colors.text;
+                      pptSlide.addShape(pptx.ShapeType.rect, { x: 1 + (col * 4.2), y: 1.5 + (row * 2.2), w: 4, h: 2, fill: bg });
+                      pptSlide.addText(item, { x: 1 + (col * 4.2), y: 1.5 + (row * 2.2), w: 4, h: 2, align: "center", fontSize: 14, color: txt });
+                  });
+               });
+               break;
+            case SlideType.VENN_DIAGRAM:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addShape(pptx.ShapeType.ellipse, { x: 3, y: 2, w: 2.5, h: 2.5, fill: colors.primary, transparency: 50 });
+              pptSlide.addShape(pptx.ShapeType.ellipse, { x: 4.5, y: 2, w: 2.5, h: 2.5, fill: colors.secondary, transparency: 50 });
+              break;
+
+            // Imagery
+            case SlideType.PHOTO_LEFT:
+              pptSlide.addText(slide.title, titleOpts);
+              addPlaceholder(pptSlide, 0.5, 1.5, 4, 3.5);
+              pptSlide.addText(formatTextPlain(slide.content), { x: 5, y: 1.5, w: 4.5, h: 3.5, fontSize: 18, valign: "middle", color: colors.text });
+              break;
+            case SlideType.PHOTO_RIGHT:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addText(formatTextPlain(slide.content), { x: 0.5, y: 1.5, w: 4.5, h: 3.5, fontSize: 18, valign: "middle", color: colors.text });
+              addPlaceholder(pptSlide, 5.5, 1.5, 4, 3.5);
+              break;
+            case SlideType.GALLERY:
+            case SlideType.FOUR_PHOTO_GRID:
+            case SlideType.TEAM_GRID:
+            case SlideType.TEAM_2x2:
+            case SlideType.TEAM_3x3:
+            case SlideType.OFFICE_PHOTO:
+              pptSlide.addText(slide.title, { ...titleOpts, fontSize: 24, h: 0.5 });
+              const photoCount = slide.type === SlideType.TEAM_3x3 ? 9 : slide.type === SlideType.TEAM_2x2 ? 4 : 4;
+              for (let i = 0; i < Math.min(photoCount, 9); i++) {
+                const row = Math.floor(i / 3);
+                const col = i % 3;
+                const x = 1 + col * 2.8;
+                const y = 1.2 + row * 2.5;
+                addPlaceholder(pptSlide, x, y, 2.2, 2, `Photo ${i+1}`);
+                if (slide.content[i]) pptSlide.addText(slide.content[i], { x, y: y + 2.1, w: 2.2, fontSize: 10, align: "center" });
+              }
+              break;
+            case SlideType.LOGO_WALL:
+              pptSlide.addText(slide.title, titleOpts);
+              for (let i = 0; i < 6; i++) {
+                addPlaceholder(pptSlide, 1 + (i%3)*2.5, 2 + Math.floor(i/3)*2, 2, 1, "Logo");
+              }
+              break;
+
+            default:
+              pptSlide.addText(slide.title, titleOpts);
+              pptSlide.addText(formatText(slide.content), contentBaseOpts);
+          }
+        });
+
+        await pptx.writeFile({ fileName: `Arcane slides-Presentation.pptx` });
+      };
+
+      // --- PROMPT (updated to reflect 125+ types with rich text) ---
+      const GPT_PROMPT = `I need a CSV for a PowerPoint presentation with 125+ slide types.
+Columns: type, title, content
+
+AVAILABLE TYPES (full list):
+Title, Agenda, SectionHeader, Statement, Quote, QuoteLarge, Contact, ThankYou, Intro, Summary,
+BulletPoints, TwoColumn, ThreeColumn, FourColumn, FiveColumn, SixColumn, SevenColumn, Checklist, FAQ, ProsCons, ProblemSolution, FeatureList, HighlightList, DefinitionList, StickyNotes,
+BigNumber, Statistics3, Statistics4, Statistics5, Statistics6, Statistics7, KpiDashboard, PricingTable, ComparisonTable, MeterGauge, ProgressBar,
+BarChart, PieChart, DonutChart, LineChart, RadarChart, ScatterChart, StackedBar, Waterfall,
+Timeline, Roadmap, ProcessSteps, Process3Circles, Process4Circles, Process5Circles, Cycle, Flowchart, Funnel, Pyramid, Gantt,
+SWOT, Matrix, VennDiagram, Fishbone, OrgChart, Comparison, Comparison3, StakeholderMap, BCGMatrix, AnsoffMatrix, PortersFive, BusinessCanvas,
+PhotoLeft, PhotoRight, FourPhotoGrid, TeamGrid, Team2x2, Team3x3, MockupLaptop, LogoWall, Awards,
+ParetoChart, CascadeChart, SpiderChart, Treemap, Sunburst, Sankey, WaterCycle, PDCA, Kaizen, SixSigma, DMAIC, SIPOC, RACI, Kanban, Scrum,
+BalanceSheet, IncomeStatement, CashFlow, ROIChart, BreakEven, BurnRate, Cohort, LTV_CAC, ChurnRate, MRRGraph
+
+FORMAT RULES:
+- Standard CSV.
+- "content" column: separate items with semicolon (;).
+- For Charts: Use "Label, Value" (e.g. "Q1, 100; Q2, 200").
+- Rich text: Use **bold** (Primary Color), *italic* (Secondary Color), ==highlight== (Highlight Color).
+No notes column.
+
+EXAMPLE:
+type,title,content
+Title,Growth Strategy,2024 Vision
+BarChart,Revenue Growth,Q1, 50; Q2, 75; Q3, 110; Q4, 150
+Team3x3,Leadership Team,**CEO**;*CTO*;CFO;COO;CMO;CIO;==Founder==;Advisor;Mentor
+ParetoChart,Issue Analysis,Login,45; Checkout,30; Search,15; Profile,10
+MRRGraph,Monthly Recurring Revenue,Jan,10000; Feb,12000; Mar,15000; Apr,18000`;
+
+      // --- COMPONENTS (unchanged but now using new types, plus subtle animations) ---
+      const DropZone = ({ onFileLoaded, isLoading }) => {
+        const [mode, setMode] = useState('upload');
+        const [textInput, setTextInput] = useState('');
+        const [copied, setCopied] = useState(false);
+
+        const handleFileChange = (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (event.target?.result) {
+              onFileLoaded(event.target.result);
+            }
+          };
+          reader.readAsText(file);
+        };
+
+        const handleCopyPrompt = () => {
+          navigator.clipboard.writeText(GPT_PROMPT);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        };
+
+        const handleTextSubmit = () => {
+          if (!textInput.trim()) return;
+          onFileLoaded(textInput);
+        };
+
+        return (
+          <div className="w-full max-w-2xl mx-auto space-y-6 animate__animated animate__fadeIn">
+            <div className="flex p-1 bg-slate-200 rounded-lg w-fit mx-auto">
+              <button
+                onClick={() => setMode('upload')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  mode === 'upload' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <UploadCloud size={16} />
+                Upload CSV
+              </button>
+              <button
+                onClick={() => setMode('paste')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  mode === 'paste' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileText size={16} />
+                Paste Text
+              </button>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[300px] flex flex-col">
+              {mode === 'upload' ? (
+                <label 
+                  className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed m-4 rounded-xl cursor-pointer transition-all hover-lift
+                    ${isLoading 
+                      ? 'bg-slate-50 border-slate-300 cursor-not-allowed opacity-75' 
+                      : 'bg-white border-blue-200 hover:bg-blue-50 hover:border-blue-400'
+                    }`}
+                >
+                  <div className="flex flex-col items-center justify-center p-6 text-center">
+                    <div className={`p-4 rounded-full mb-4 ${isLoading ? 'bg-slate-200 animate-pulse' : 'bg-blue-100 text-blue-600'}`}>
+                       <UploadCloud size={32} />
+                    </div>
+                    <p className="mb-2 text-lg font-medium text-slate-700">
+                      {isLoading ? 'Processing...' : 'Click to upload or drag & drop'}
+                    </p>
+                    <p className="text-sm text-slate-500 max-w-xs">
+                      Upload a .csv file.
+                    </p>
+                  </div>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept=".csv" 
+                    onChange={handleFileChange}
+                    disabled={isLoading}
+                  />
+                </label>
+              ) : (
+                <div className="flex-1 flex flex-col p-4">
+                  <textarea
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder="Paste your CSV content here..."
+                    className="flex-1 w-full p-4 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs resize-none"
+                    disabled={isLoading}
+                  />
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={handleTextSubmit}
+                      disabled={isLoading || !textInput.trim()}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                         <span className="animate-spin">⟳</span>
+                      ) : (
+                        <Play size={16} fill="currentColor" />
+                      )}
+                      Generate Slides
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-100 p-5">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex gap-3">
+                   <div className="p-2 bg-white rounded-lg shadow-sm text-indigo-600">
+                     <Sparkles size={20} />
+                   </div>
+                   <div>
+                     <h4 className="font-semibold text-slate-800 text-sm">Generate with ChatGPT</h4>
+                     <p className="text-xs text-slate-600 mt-0.5">Copy our prompt template (125+ types, rich text support).</p>
+                   </div>
+                </div>
+                <button
+                  onClick={handleCopyPrompt}
+                  className="flex items-center gap-2 bg-white hover:bg-slate-50 text-indigo-600 border border-indigo-200 px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm whitespace-nowrap"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? 'Copied!' : 'Copy Prompt'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const SlideCard = ({ slide, index, onEdit }) => {
+        const getSlideStyle = () => {
+          const t = slide.type;
+          if (t === SlideType.TITLE || t === SlideType.SECTION_HEADER || t === SlideType.THANK_YOU) return 'border-blue-600 bg-blue-50';
+          if (t === SlideType.QUOTE || t === SlideType.STATEMENT || t === SlideType.QUOTE_LARGE) return 'border-amber-500 bg-amber-50';
+          if (t.includes('Photo') || t.includes('Team') || t.includes('Gallery') || t.includes('Mockup')) return 'border-purple-500 bg-purple-50';
+          if (t.includes('Chart') || t.includes('Table') || t.includes('Stat') || t === SlideType.BIG_NUMBER || t === SlideType.KPI_DASHBOARD) return 'border-emerald-500 bg-emerald-50';
+          if (t.includes('Process') || t.includes('Timeline') || t.includes('Cycle') || t.includes('Flow') || t === SlideType.ROADMAP) return 'border-indigo-500 bg-indigo-50';
+          return 'border-slate-300 bg-white';
+        };
+
+        const getIcon = () => {
+          const t = slide.type;
+          if (t.includes('Photo') || t.includes('Team') || t.includes('Gallery')) return <ImageIcon size={12} className="text-purple-400" />;
+          if (t.includes('Chart')) return <BarChart3 size={12} className="text-emerald-400" />;
+          if (t.includes('Stat') || t === SlideType.BIG_NUMBER) return <Grid size={12} className="text-emerald-400" />;
+          if (t.includes('Process') || t.includes('Timeline')) return <Layers size={12} className="text-indigo-400" />;
+          if (t.includes('List') || t.includes('Column')) return <List size={12} className="text-slate-400" />;
+          return null;
+        };
+
+        return (
+          <div className={`relative group border-l-4 rounded-r-lg shadow-sm p-5 transition-all hover:shadow-md hover-lift ${getSlideStyle()}`}>
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-2">
+                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Slide {index + 1} • {slide.type.replace(/([A-Z])/g, ' $1').trim()}
+                </span>
+                {getIcon()}
+              </div>
+             
+              <button 
+                onClick={() => onEdit(slide)}
+                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-500 hover:text-blue-600 rounded-full hover:bg-slate-200 transition-all"
+              >
+                <Edit2 size={16} />
+              </button>
+            </div>
+
+            <h3 className="text-lg font-bold text-slate-800 mb-3 leading-tight">{slide.title}</h3>
+
+            <div className="space-y-1">
+              {slide.content.slice(0, 3).map((item, i) => (
+                <p key={i} className="text-sm text-slate-600 truncate flex gap-2">
+                  <span className="text-slate-300">•</span> 
+                  <span className="truncate">{item}</span>
+                </p>
+              ))}
+              {slide.content.length > 3 && (
+                <p className="text-xs text-slate-400 italic pl-3">+{slide.content.length - 3} more items...</p>
+              )}
+            </div>
+            
+          </div>
+        );
+      };
+
+      const App = () => {
+        const [slides, setSlides] = useState([]);
+        const [isProcessing, setIsProcessing] = useState(false);
+        const [error, setError] = useState(null);
+        const [config, setConfig] = useState({
+          theme: 'blue',
+          customColors: { primary: '', secondary: '' }
+        });
+
+        const handleThemeChange = (theme) => {
+          let colors = { primary: '#2563eb', secondary: '#3b82f6' };
+          if (theme === 'green') colors = { primary: '#16a34a', secondary: '#22c55e' };
+          if (theme === 'red') colors = { primary: '#dc2626', secondary: '#ef4444' };
+          if (theme === 'purple') colors = { primary: '#9333ea', secondary: '#a855f7' };
+          if (theme === 'orange') colors = { primary: '#ea580c', secondary: '#f97316' };
+          
+          setConfig(prev => ({ ...prev, theme, customColors: colors }));
+        };
+
+        const handleFileLoaded = async (text) => {
+          setIsProcessing(true);
+          setError(null);
+          try {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const enhancedSlides = await parseCsvData(text);
+            setSlides(enhancedSlides);
+          } catch (err) {
+            setError(err.message || "An unexpected error occurred processing the file.");
+          } finally {
+            setIsProcessing(false);
+          }
+        };
+
+        const handleDownload = async () => {
+          try {
+            await generatePptx(slides, config);
+          } catch (e) {
+            console.error(e);
+            alert("Failed to generate PPTX: " + e.message);
+          }
+        };
+
+        const handleReset = () => {
+          setSlides([]);
+          setError(null);
+        };
+
+        const updateSlide = (updatedSlide) => {
+          setSlides(slides.map(s => s.id === updatedSlide.id ? updatedSlide : s));
+        };
+
+        if (slides.length === 0) {
+          return (
+            <div className="min-h-screen bg-slate-50 flex flex-col">
+              <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 shadow-sm sticky top-0 z-10">
+                <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg text-white">
+                  <LayoutTemplate size={24} />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-900 tracking-tight">Arcane slides</h1>
+                  <p className="text-xs text-slate-500">what's heavier a kilogram of steel or a kilogram of feather? </p>
+                </div>
+              </header>
+
+              <main className="flex-1 flex flex-col items-center justify-center p-6">
+                <div className="max-w-3xl w-full text-center mb-10">
+                  <h2 className="text-4xl font-extrabold text-slate-900 mb-4">
+                    Designed by:  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Arcane</span>
+                  </h2>
+                  <p className="text-lg text-slate-600 max-w-xl mx-auto">
+                    Veni, vidi, vici.
+                  </p>
+                </div>
+                
+                <DropZone onFileLoaded={handleFileLoaded} isLoading={isProcessing} />
+
+                {error && (
+                  <div className="mt-8 p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg max-w-2xl w-full text-center">
+                    <p className="font-semibold">Error</p>
+                    <p>{error}</p>
+                  </div>
+                )}
+              </main>
+            </div>
+          );
+        }
+
+        const themes = [
+            { id: 'blue', name: 'Blue', color: 'bg-blue-600' },
+            { id: 'green', name: 'Green', color: 'bg-green-600' },
+            { id: 'red', name: 'Red', color: 'bg-red-600' },
+            { id: 'purple', name: 'Purple', color: 'bg-purple-600' },
+            { id: 'orange', name: 'Orange', color: 'bg-orange-500' }
+        ];
+
+        return (
+          <div className="min-h-screen bg-slate-50 flex flex-col">
+            <header className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 z-20">
+              <div className="flex items-center gap-4">
+                 <button onClick={handleReset} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors" title="Back to Upload">
+                   <ChevronLeft size={20} />
+                 </button>
+                 <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-600 rounded text-white">
+                    <LayoutTemplate size={18} />
+                  </div>
+                  <span className="font-bold text-slate-800">Arcane slides Editor</span>
+                  <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-medium border border-slate-200">
+                    {slides.length} Slides
+                  </span>
+                 </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleDownload}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm active:scale-95"
+                >
+                  <Download size={18} />
+                  <span>Export PPTX</span>
+                </button>
+              </div>
+            </header>
+
+            <div className="flex-1 max-w-7xl mx-auto w-full p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1 space-y-6">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-24">
+                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Palette size={18} className="text-purple-500" />
+                    Theme & Style
+                  </h3>
+                  
+                  <div className="space-y-6">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase">Select Theme</label>
+                        <div className="grid grid-cols-2 gap-2">
+                        {themes.map((t) => (
+                            <button
+                            key={t.id}
+                            onClick={() => handleThemeChange(t.id)}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-all border ${
+                                config.theme === t.id 
+                                ? 'bg-slate-50 border-blue-500 text-blue-700 ring-1 ring-blue-500' 
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                            }`}
+                            >
+                            <div className={`w-3 h-3 rounded-full ${t.color}`}></div>
+                            {t.name}
+                            </button>
+                        ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">Primary Color</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color"
+                            value={config.customColors?.primary || '#2563eb'}
+                            onChange={(e) => setConfig({...config, customColors: {...config.customColors, primary: e.target.value}})}
+                            className="h-8 w-8 rounded cursor-pointer border-0 shadow-sm ring-1 ring-slate-200"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">Secondary Color</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="color"
+                            value={config.customColors?.secondary || '#3b82f6'}
+                            onChange={(e) => setConfig({...config, customColors: {...config.customColors, secondary: e.target.value}})}
+                            className="h-8 w-8 rounded cursor-pointer border-0 shadow-sm ring-1 ring-slate-200"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex justify-between items-end mb-2">
+                  <h2 className="text-xl font-bold text-slate-800">Slide Deck</h2>
+                </div>
+                
+                <div className="space-y-4 pb-20">
+                  {slides.map((slide, index) => (
+                    <SlideCard 
+                      key={slide.id} 
+                      slide={slide} 
+                      index={index} 
+                      onEdit={(s) => {
+                        const newTitle = prompt("Edit Title", s.title);
+                        if (newTitle) updateSlide({...s, title: newTitle});
+                      }} 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+    </script>
+  </body>
+</html>
