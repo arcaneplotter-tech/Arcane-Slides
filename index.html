@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcane Slides · expanded</title>
+    <meta name="description" content="Instantly convert CSV data or ChatGPT generated text into formatted PowerPoint presentations." />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&family=Courier+Prime&family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;600;800&family=Patrick+Hand&family=Playfair+Display:ital,wght@0,600;1,600&family=Poppins:wght@400;600;700&family=Space+Mono&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    </style>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="importmap">
+{
+  "imports": {
+    "pptxgenjs": "https://esm.sh/pptxgenjs@3.12.0",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "papaparse": "https://esm.sh/papaparse@5.4.1",
+    "uuid": "https://esm.sh/uuid@9.0.1",
+    "lucide-react": "https://esm.sh/lucide-react@0.294.0",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+      import React, { useState, useEffect, useRef } from 'react';
+      import { createRoot } from 'react-dom/client';
+      import Papa from 'papaparse';
+      import PptxGenJS from 'pptxgenjs';
+      import { jsPDF } from 'jspdf';
+      import { v4 as uuidv4 } from 'uuid';
+      import { 
+        FileUp, Download, Presentation, AlertCircle, RefreshCw, Trash2, 
+        FileText, FileType, ArrowLeft, ArrowRight, Palette, Type,
+        LayoutTemplate, Quote, AlignLeft, Columns, Image as ImageIcon, 
+        Divide, Hash, List, GitCommit, Grid3X3, SplitSquareHorizontal, ChevronDown,
+        Copy, Check, Bot, Sparkles, Layers, BarChart, PieChart, Activity, Clock,
+        GanttChartSquare, KanbanSquare, Dices, Quote as QuoteIcon, Scale, Dice1,
+        TextQuote, Binary, CandlestickChart, Monitor, BookOpen, Megaphone,
+        CalendarDays, Mountain, Cpu, Anchor, Feather
+      } from 'lucide-react';
+
+      // --- Constants & Types ---
+
+      const APP_NAME = "CSV to PPTX";
+
+      const CHATGPT_PROMPT_TEMPLATE = `Act as a professional presentation designer.
+I need you to generate content for a PowerPoint presentation about [INSERT TOPIC HERE].
+
+Please output the result as a raw CSV format with strictly these two headers: "Title", "Content".
+
+Rules:
+1. "Title": A catchy header for the slide.
+2. "Content": The body text. Separate individual bullet points with a pipe symbol "|". Do not use newlines inside this cell.
+3. Do not include markdown formatting (like \`\`\`csv). Just the raw text.
+
+Example format:
+Title,Content
+Introduction,Welcome to the session|Overview of agenda
+Market Analysis,Growth is up 20%|New demographics identified
+Conclusion,Summary of key points|Q&A Session`;
+
+      // ==========  ADDED 20+ NEW THEMES ==========
+      const THEMES = [
+        {
+          id: 'corporate',
+          name: 'Corporate Blue',
+          backgroundColor: '#FFFFFF',
+          titleColor: '#1e3a8a',
+          contentColor: '#334155',
+          accentColor: '#1e3a8a',
+          fontFamily: 'Helvetica',
+          alignment: 'left',
+          showHeaderBar: true,
+          borderRadius: '0px'
+        },
+        {
+          id: 'chalkboard-doodle',
+          name: 'Chalkboard Doodle',
+          backgroundColor: '#1a1a1a',
+          titleColor: '#ffffff',
+          contentColor: '#e5e5e5',
+          accentColor: '#ffffff',
+          fontFamily: 'Patrick Hand',
+          alignment: 'center',
+          showBorderFrame: true,
+          borderStyle: 'dashed',
+          borderRadius: '2px'
+        },
+        {
+          id: 'boho-earth',
+          name: 'Boho Earth',
+          backgroundColor: '#fdf8f6',
+          backgroundImageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?q=80&w=2574&auto=format&fit=crop',
+          titleColor: '#7c2d12',
+          contentColor: '#57534e',
+          accentColor: '#d97706',
+          fontFamily: 'Merriweather',
+          alignment: 'left',
+          borderRadius: '16px',
+          showBorderFrame: true,
+          borderStyle: 'double'
+        },
+        {
+          id: 'tech-waves',
+          name: 'Tech Waves',
+          backgroundColor: '#f0f9ff',
+          gradientBackground: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+          titleColor: '#0369a1',
+          contentColor: '#0c4a6e',
+          accentColor: '#0ea5e9',
+          fontFamily: 'Work Sans',
+          alignment: 'left',
+          borderRadius: '0px',
+          showBorderFrame: true,
+          borderStyle: 'solid'
+        },
+        {
+          id: 'golden-ornament',
+          name: 'Golden Ornament',
+          backgroundColor: '#f0fdfa',
+          titleColor: '#b45309',
+          contentColor: '#134e4a',
+          accentColor: '#b45309',
+          fontFamily: 'Playfair Display',
+          alignment: 'center',
+          showBorderFrame: true,
+          borderStyle: 'double',
+          borderRadius: '0px'
+        },
+        {
+          id: 'blue-geometric',
+          name: 'Blue Geometric',
+          backgroundColor: '#ffffff',
+          gradientBackground: 'radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(255, 255, 255) 90%)',
+          titleColor: '#1e3a8a',
+          contentColor: '#172554',
+          accentColor: '#3b82f6',
+          fontFamily: 'Montserrat',
+          alignment: 'left',
+          showBorderFrame: true,
+          borderStyle: 'solid',
+          borderRadius: '0px'
+        },
+        {
+          id: 'pastel-memphis',
+          name: 'Pastel Memphis',
+          backgroundColor: '#eff6ff',
+          backgroundImageUrl: 'https://images.unsplash.com/photo-1515541355020-e2b20f4c0293?q=80&w=2600&auto=format&fit=crop',
+          titleColor: '#1e3a8a',
+          contentColor: '#1e40af',
+          accentColor: '#fbbf24',
+          fontFamily: 'Comic Neue',
+          alignment: 'left',
+          borderRadius: '12px',
+          showBorderFrame: true
+        },
+        {
+          id: 'browser-window',
+          name: 'Browser Window',
+          backgroundColor: '#f8fafc',
+          titleColor: '#334155',
+          contentColor: '#475569',
+          accentColor: '#cbd5e1',
+          fontFamily: 'Helvetica',
+          alignment: 'left',
+          isBrowserWindow: true,
+          borderRadius: '8px'
+        },
+        {
+          id: 'folder-tab',
+          name: 'Folder Tab',
+          backgroundColor: '#fef9c3',
+          titleColor: '#854d0e',
+          contentColor: '#713f12',
+          accentColor: '#eab308',
+          fontFamily: 'Helvetica',
+          alignment: 'left',
+          isFolderTab: true,
+          borderRadius: '8px'
+        },
+        {
+          id: 'purple-fluid',
+          name: 'Purple Fluid',
+          backgroundColor: '#faf5ff',
+          gradientBackground: 'linear-gradient(120deg, #f3e8ff 0%, #ffffff 100%)',
+          titleColor: '#581c87',
+          contentColor: '#3b0764',
+          accentColor: '#a855f7',
+          fontFamily: 'Poppins',
+          alignment: 'left',
+          borderRadius: '16px',
+          showBorderFrame: true
+        },
+        {
+          id: 'retro-terminal',
+          name: 'Retro Terminal',
+          backgroundColor: '#0d1117',
+          titleColor: '#00ff41',
+          contentColor: '#00ff41',
+          accentColor: '#008f11',
+          fontFamily: 'Courier',
+          alignment: 'left',
+          isBrowserWindow: true,
+          borderRadius: '6px'
+        },
+        {
+          id: 'project-file',
+          name: 'Project File',
+          backgroundColor: '#dbeafe', 
+          titleColor: '#1e40af',
+          contentColor: '#1e3a8a',
+          accentColor: '#3b82f6',
+          fontFamily: 'Work Sans',
+          alignment: 'left',
+          isFolderTab: true,
+          borderRadius: '8px'
+        },
+        {
+          id: 'blueprint-tech',
+          name: 'Blueprint Tech',
+          backgroundColor: '#172554',
+          titleColor: '#ffffff',
+          contentColor: '#bfdbfe',
+          accentColor: '#60a5fa',
+          fontFamily: 'Courier',
+          alignment: 'left',
+          showBorderFrame: true,
+          borderStyle: 'dashed',
+          borderRadius: '2px'
+        },
+        {
+          id: 'abstract-pop',
+          name: 'Abstract Pop',
+          backgroundColor: '#fff1f2',
+          gradientBackground: 'linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%)', 
+          titleColor: '#be123c',
+          contentColor: '#881337',
+          accentColor: '#f43f5e',
+          fontFamily: 'Montserrat',
+          alignment: 'center',
+          showBorderFrame: true,
+          borderStyle: 'solid',
+          borderRadius: '0px'
+        },
+        {
+          id: 'dark-elegance',
+          name: 'Dark Elegance',
+          backgroundColor: '#0f172a',
+          titleColor: '#fcd34d', 
+          contentColor: '#e2e8f0', 
+          accentColor: '#fcd34d',
+          fontFamily: 'Playfair Display',
+          alignment: 'left',
+          showBorderFrame: true,
+          borderStyle: 'double',
+          borderRadius: '4px'
+        },
+        // ---------- 16 BRAND NEW THEMES (more unique) ----------
+        {
+          id: 'midnight-ocean',
+          name: 'Midnight Ocean',
+          backgroundColor: '#0a1929',
+          gradientBackground: 'linear-gradient(145deg, #0a1929 0%, #1d3b5c 100%)',
+          titleColor: '#7BC9FF',
+          contentColor: '#e0f2fe',
+          accentColor: '#2b7fc1',
+          fontFamily: 'Work Sans',
+          alignment: 'left',
+          borderRadius: '8px',
+          showBorderFrame: true,
+          borderStyle: 'solid'
+        },
+        {
+          id: 'desert-sunset',
+          name: 'Desert Sunset',
+          backgroundColor: '#fbe9d2',
+          gradientBackground: 'linear-gradient(120deg, #f7c978 0%, #f2856d 100%)',
+          titleColor: '#701a1a',
+          contentColor: '#2c1810',
+          accentColor: '#b13e3e',
+          fontFamily: 'Merriweather',
+          alignment: 'center',
+          borderRadius: '20px',
+          showBorderFrame: true,
+          borderStyle: 'dotted'
+        },
+        {
+          id: 'frost-minimal',
+          name: 'Frost Minimal',
+          backgroundColor: '#f8fafc',
+          titleColor: '#0f2c4f',
+          contentColor: '#1f3a5f',
+          accentColor: '#a5d8ff',
+          fontFamily: 'Inter',
+          alignment: 'left',
+          borderRadius: '0px',
+          showBorderFrame: false,
+          showHeaderBar: true,
+        },
+        {
+          id: 'tropical-leaf',
+          name: 'Tropical Leaf',
+          backgroundColor: '#ecfdf3',
+          backgroundImageUrl: 'https://images.unsplash.com/photo-1545161296-3a0e8f3b34b3?q=80&w=2574&auto=format&fit=crop',
+          titleColor: '#14532d',
+          contentColor: '#166534',
+          accentColor: '#22c55e',
+          fontFamily: 'Patrick Hand',
+          alignment: 'left',
+          borderRadius: '24px',
+          showBorderFrame: true,
+          borderStyle: 'double'
+        },
+        {
+          id: 'neo-memphis',
+          name: 'Neo Memphis',
+          backgroundColor: '#fee2e2',
+          gradientBackground: 'repeating-linear-gradient(45deg, #ffdab9 0px, #ffdab9 10px, #ffe4e1 10px, #ffe4e1 20px)',
+          titleColor: '#831843',
+          contentColor: '#4a044e',
+          accentColor: '#f472b6',
+          fontFamily: 'Comic Neue',
+          alignment: 'center',
+          borderRadius: '20px',
+          showBorderFrame: true,
+          borderStyle: 'dashed'
+        },
+        {
+          id: 'cyber-neon',
+          name: 'Cyber Neon',
+          backgroundColor: '#0b0f1c',
+          titleColor: '#00f5ff',
+          contentColor: '#c0caf5',
+          accentColor: '#ff007f',
+          fontFamily: 'Space Mono',
+          alignment: 'left',
+          showBorderFrame: true,
+          borderStyle: 'solid',
+          borderRadius: '0px'
+        },
+        {
+          id: 'warm-wool',
+          name: 'Warm Wool',
+          backgroundColor: '#f3ede4',
+          backgroundImageUrl: 'https://images.unsplash.com/photo-1604859358811-1786d76b5cd0?q=80&w=2670&auto=format&fit=crop',
+          titleColor: '#5f3b1e',
+          contentColor: '#4b3b2e',
+          accentColor: '#b08968',
+          fontFamily: 'Merriweather',
+          alignment: 'left',
+          borderRadius: '4px',
+          showBorderFrame: true,
+          borderStyle: 'solid'
+        },
+        {
+          id: 'galactic-core',
+          name: 'Galactic Core',
+          backgroundColor: '#0f0f23',
+          backgroundImageUrl: 'https://images.unsplash.com/photo-1465101108990-e5eac17cf76d?q=80&w=2574&auto=format&fit=crop',
+          titleColor: '#ffb7c5',
+          contentColor: '#ecd8ff',
+          accentColor: '#b8a9ff',
+          fontFamily: 'Poppins',
+          alignment: 'center',
+          borderRadius: '0px',
+          showBorderFrame: false,
+          isBrowserWindow: true
+        },
+        {
+          id: 'paper-origami',
+          name: 'Paper Origami',
+          backgroundColor: '#fefae0',
+          titleColor: '#8b5a2b',
+          contentColor: '#5f3e1c',
+          accentColor: '#bc8c4b',
+          fontFamily: 'Courier Prime',
+          alignment: 'left',
+          borderRadius: '2px',
+          showBorderFrame: true,
+          borderStyle: 'dashed'
+        },
+        {
+          id: 'mint-chocolate',
+          name: 'Mint Chocolate',
+          backgroundColor: '#e6f7f0',
+          titleColor: '#2d5e3b',
+          contentColor: '#1d3b2b',
+          accentColor: '#78b88f',
+          fontFamily: 'Montserrat',
+          alignment: 'left',
+          borderRadius: '12px',
+          showBorderFrame: true,
+          borderStyle: 'double',
+          showHeaderBar: true
+        },
+        {
+          id: 'japanese-indigo',
+          name: 'Japanese Indigo',
+          backgroundColor: '#1f3a5f',
+          titleColor: '#f4e9cd',
+          contentColor: '#e3d5b5',
+          accentColor: '#a6bfb5',
+          fontFamily: 'Playfair Display',
+          alignment: 'center',
+          borderRadius: '0px',
+          showBorderFrame: true,
+          borderStyle: 'solid'
+        },
+        {
+          id: 'lavender-fields',
+          name: 'Lavender Fields',
+          backgroundColor: '#f3f0ff',
+          gradientBackground: 'linear-gradient(112deg, #e6d7ff 0%, #fae9ff 100%)',
+          titleColor: '#3c1e5c',
+          contentColor: '#2d1b3c',
+          accentColor: '#c084fc',
+          fontFamily: 'Inter',
+          alignment: 'left',
+          borderRadius: '16px',
+          showBorderFrame: true,
+          borderStyle: 'dotted'
+        },
+        {
+          id: 'terra-cotta',
+          name: 'Terra Cotta',
+          backgroundColor: '#fbe3d3',
+          titleColor: '#8b3f2a',
+          contentColor: '#6d2e1f',
+          accentColor: '#c96e4b',
+          fontFamily: 'Helvetica',
+          alignment: 'left',
+          borderRadius: '8px',
+          showBorderFrame: true,
+          borderStyle: 'solid'
+        },
+        {
+          id: 'pop-art-bold',
+          name: 'Pop Art Bold',
+          backgroundColor: '#ffde59',
+          titleColor: '#0047ab',
+          contentColor: '#cc1f3a',
+          accentColor: '#00a859',
+          fontFamily: 'Comic Neue',
+          alignment: 'center',
+          borderRadius: '0px',
+          showBorderFrame: true,
+          borderStyle: 'double',
+          showHeaderBar: true
+        },
+        {
+          id: 'cloud-watch',
+          name: 'Cloud Watch',
+          backgroundColor: '#d9eaf7',
+          backgroundImageUrl: 'https://images.unsplash.com/photo-1501631259223-89d4e246ed6b?q=80&w=2672&auto=format&fit=crop',
+          titleColor: '#05507a',
+          contentColor: '#0c385c',
+          accentColor: '#72b0d4',
+          fontFamily: 'Work Sans',
+          alignment: 'left',
+          borderRadius: '12px',
+          showBorderFrame: false
+        },
+        {
+          id: 'midcentury-modern',
+          name: 'Mid‑century Modern',
+          backgroundColor: '#f9f1e0',
+          titleColor: '#b44c3c',
+          contentColor: '#3f5e4a',
+          accentColor: '#e1a933',
+          fontFamily: 'Merriweather',
+          alignment: 'center',
+          borderRadius: '4px',
+          showBorderFrame: true,
+          borderStyle: 'solid'
+        }
+      ];
+
+      const DEFAULT_CSV_PLACEHOLDER = `Title,Content
+Our Quarterly Goals,Increase revenue by 15%|Launch 2 new products|Expand team by 10%
+Marketing Strategy,Social Media Campaign|Email Marketing Automation|Influencer Partnerships
+Next Steps,Finalize budget|Approve designs|Kickoff meeting next Monday`;
+
+      // --- Components ---
+
+      const Button = ({
+        children,
+        variant = 'primary',
+        size = 'md',
+        isLoading,
+        icon,
+        className = '',
+        disabled,
+        ...props
+      }) => {
+        const baseStyles = "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+        
+        const variants = {
+          primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-sm",
+          secondary: "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm",
+          outline: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-indigo-500",
+          ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+        };
+
+        const sizes = {
+          sm: "px-3 py-1.5 text-sm",
+          md: "px-4 py-2 text-sm",
+          lg: "px-6 py-3 text-base",
+        };
+
+        return (
+          <button
+            className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+            disabled={disabled || isLoading}
+            {...props}
+          >
+            {isLoading && (
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            )}
+            {!isLoading && icon && <span className="mr-2">{icon}</span>}
+            {children}
+          </button>
+        );
+      };
+
+      const PromptGenerator = () => {
+        const [copied, setCopied] = useState(false);
+        const [isExpanded, setIsExpanded] = useState(false);
+
+        const handleCopy = () => {
+          navigator.clipboard.writeText(CHATGPT_PROMPT_TEMPLATE);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        };
+
+        return (
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-5 mb-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-white p-1.5 rounded-lg shadow-sm">
+                    <Sparkles className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-indigo-900">Need content? Use AI</h3>
+                </div>
+                <p className="text-sm text-indigo-700 mb-3">
+                  Don't have a CSV? Copy our engineered prompt template and paste it into ChatGPT, Gemini, or Claude to generate perfect slide data instantly.
+                </p>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="primary" 
+                    onClick={handleCopy}
+                    icon={copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  >
+                    {copied ? 'Copied to Clipboard!' : 'Copy Prompt Template'}
+                  </Button>
+                  <button 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 underline decoration-indigo-300 underline-offset-2"
+                  >
+                    {isExpanded ? 'Hide Template' : 'View Template'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div className="mt-4 bg-white rounded-lg border border-indigo-100 p-4 shadow-inner">
+                <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono overflow-x-auto">
+                  {CHATGPT_PROMPT_TEMPLATE}
+                </pre>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const SlideCard = ({ slide, index, style, onLayoutChange }) => {
+        const [isMenuOpen, setIsMenuOpen] = useState(false);
+        const menuRef = useRef(null);
+        const theme = THEMES.find(t => t.id === style.themeId) || THEMES[0];
+
+        useEffect(() => {
+          const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+              setIsMenuOpen(false);
+            }
+          };
+          document.addEventListener('mousedown', handleClickOutside);
+          return () => document.removeEventListener('mousedown', handleClickOutside);
+        }, []);
+
+        const getScaleMultiplier = (level) => {
+          switch(level) {
+            case 1: return 0.75;
+            case 2: return 1.0;
+            case 3: return 1.25;
+            case 4: return 1.5;
+            case 5: return 1.75;
+            default: return 1.0;
+          }
+        };
+        
+        const scale = getScaleMultiplier(style.textSize);
+        
+        const cardStyle = {
+          backgroundColor: theme.backgroundColor,
+          backgroundImage: theme.backgroundImageUrl ? `url(${theme.backgroundImageUrl})` : (theme.gradientBackground || 'none'),
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          color: theme.contentColor,
+          fontFamily: theme.fontFamily,
+          borderRadius: theme.borderRadius || '12px',
+          textAlign: theme.alignment
+        };
+
+        const titleStyle = {
+          color: theme.titleColor,
+          fontSize: `${1.5 * scale}rem`,
+        };
+
+        const contentSize = `${1.0 * scale}rem`;
+
+        // ==========  ADDED 7 NEW LAYOUTS ==========
+        const getLayoutIcon = (layout) => {
+          switch(layout) {
+            case 'list': return <List className="w-4 h-4" />;
+            case 'paragraph': return <AlignLeft className="w-4 h-4" />;
+            case 'quote': return <Quote className="w-4 h-4" />;
+            case 'split': return <Columns className="w-4 h-4" />;
+            case 'title-center': return <Type className="w-4 h-4" />;
+            case 'two-col': return <Divide className="w-4 h-4 rotate-90" />;
+            case 'three-col': return <Grid3X3 className="w-4 h-4" />;
+            case 'comparison': return <SplitSquareHorizontal className="w-4 h-4" />;
+            case 'timeline': return <GitCommit className="w-4 h-4 rotate-90" />;
+            case 'caption': return <ImageIcon className="w-4 h-4" />;
+            case 'big-number': return <Hash className="w-4 h-4" />;
+            // new ones
+            case 'kanban': return <KanbanSquare className="w-4 h-4" />;
+            case 'roadmap': return <CalendarDays className="w-4 h-4" />;
+            case 'stats': return <Activity className="w-4 h-4" />;
+            case 'pro-con': return <Scale className="w-4 h-4" />;
+            case 'gantt': return <GanttChartSquare className="w-4 h-4" />;
+            case 'quote-card': return <TextQuote className="w-4 h-4" />;
+            case 'feature-grid': return <Layers className="w-4 h-4" />;
+            default: return <LayoutTemplate className="w-4 h-4" />;
+          }
+        };
+
+        const getLayoutName = (layout) => {
+          return layout.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        };
+
+        const handleLayoutSelect = (l) => {
+          onLayoutChange?.(slide.id, l);
+          setIsMenuOpen(false);
+        };
+
+        const isDarkTheme = theme.id === 'retro-terminal' || theme.id === 'chalkboard-doodle' || theme.id === 'dark-elegance' || theme.id === 'blueprint-tech' || theme.id === 'cyber-neon' || theme.id === 'galactic-core' || theme.id === 'midnight-ocean';
+
+        return (
+          <div className="flex flex-col gap-2 relative z-0"> 
+              <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Slide {index + 1}</span>
+                  
+                  <div className="relative" ref={menuRef}>
+                    <button 
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md transition-colors"
+                    >
+                      {getLayoutIcon(slide.layout)}
+                      <span>{getLayoutName(slide.layout)}</span>
+                      <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
+                    </button>
+
+                    {isMenuOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 grid grid-cols-2 gap-1">
+                          {[
+                            'list', 'paragraph', 'two-col', 'three-col', 
+                            'comparison', 'timeline', 'split', 'quote', 
+                            'caption', 'big-number', 'title-center',
+                            // new
+                            'kanban', 'roadmap', 'stats', 'pro-con', 'gantt', 'quote-card', 'feature-grid'
+                          ].map((l) => (
+                            <button
+                              key={l}
+                              onClick={() => handleLayoutSelect(l)}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors text-left ${slide.layout === l ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                              {getLayoutIcon(l)}
+                              {getLayoutName(l)}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+              </div>
+
+              {/* Slide Preview Container */}
+              <div 
+                  className="relative shadow-sm transition-all duration-300 overflow-hidden flex flex-col h-full min-h-[300px] border border-slate-200"
+                  style={cardStyle}
+              >
+                {theme.backgroundImageUrl && (
+                  <div className="absolute inset-0 bg-white/30 pointer-events-none" />
+                )}
+
+                {theme.isBrowserWindow && (
+                  <div className="absolute top-4 left-4 right-4 h-8 rounded-t-lg flex items-center px-3 gap-2 border-b z-10"
+                      style={{ 
+                        backgroundColor: theme.id === 'retro-terminal' ? '#333' : '#e2e8f0', 
+                        borderColor: theme.id === 'retro-terminal' ? '#444' : '#cbd5e1'
+                      }}>
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                  </div>
+                )}
+                {theme.isBrowserWindow && (
+                    <div className="absolute top-12 left-4 right-4 bottom-4 border-x border-b rounded-b-lg pointer-events-none"
+                         style={{ 
+                           backgroundColor: theme.id === 'retro-terminal' ? '#000' : 'rgba(255,255,255,0.9)',
+                           borderColor: theme.id === 'retro-terminal' ? '#444' : '#cbd5e1'
+                         }} />
+                )}
+
+                {theme.isFolderTab && (
+                    <div className="absolute top-4 left-4 w-32 h-8 bg-[inherit] rounded-t-lg z-0 brightness-90 border-t border-x border-slate-300/50"></div>
+                )}
+                {theme.isFolderTab && (
+                    <div className="absolute top-12 left-4 right-4 bottom-4 shadow-sm rounded-b-lg rounded-tr-lg z-10 p-6" 
+                         style={{ backgroundColor: theme.id === 'project-file' ? '#fff' : '#fff' }} />
+                )}
+
+                {theme.showBorderFrame && !theme.isBrowserWindow && !theme.isFolderTab && (
+                  <div 
+                      className={`absolute inset-3 border-4 z-0 pointer-events-none`}
+                      style={{ 
+                        borderColor: theme.accentColor,
+                        borderStyle: theme.borderStyle || 'solid'
+                      }}
+                  />
+                )}
+
+                <div className={`relative z-20 p-8 flex flex-col h-full gap-4 ${theme.isBrowserWindow ? 'mt-8 mx-4' : ''} ${theme.isFolderTab ? 'mt-8 mx-4' : ''}`}>
+                  
+                  {slide.layout !== 'title-center' && (
+                      <h3 
+                          className="font-bold leading-tight"
+                          style={titleStyle}
+                      >
+                      {slide.title || 'Untitled Slide'}
+                      </h3>
+                  )}
+
+                  <div className="flex-grow">
+                      
+                      {slide.layout === 'title-center' && (
+                          <div className="h-full flex items-center justify-center">
+                              <h1 className="font-bold text-center leading-tight" style={{ fontSize: `calc(${titleStyle.fontSize} * 2)`, color: theme.titleColor }}>
+                                  {slide.title || 'Untitled'}
+                              </h1>
+                          </div>
+                      )}
+
+                      {slide.layout === 'list' && (
+                          <ul className={`space-y-3 ${theme.alignment === 'center' ? 'list-none' : 'list-disc pl-5'}`}>
+                              {slide.content.map((point, i) => (
+                                  <li key={i} className="leading-relaxed" style={{ fontSize: contentSize }}>
+                                      {theme.alignment === 'center' && <span className="text-xs opacity-50 mr-2">•</span>}
+                                      {point}
+                                  </li>
+                              ))}
+                          </ul>
+                      )}
+
+                      {slide.layout === 'paragraph' && (
+                          <div className="leading-relaxed whitespace-pre-line" style={{ fontSize: contentSize }}>
+                              {slide.content.join(' ')}
+                          </div>
+                      )}
+
+                      {slide.layout === 'quote' && (
+                          <div className="h-full flex flex-col items-center justify-center p-4">
+                              <Quote className="w-12 h-12 mb-4 opacity-30" style={{ color: theme.accentColor }} />
+                              <p className="text-center italic font-serif leading-relaxed" style={{ fontSize: `calc(${contentSize} * 1.5)`, color: theme.accentColor }}>
+                                  "{slide.content.join(' ')}"
+                              </p>
+                          </div>
+                      )}
+
+                      {slide.layout === 'split' && (
+                          <div className="grid grid-cols-2 gap-4 h-full">
+                              <div className="flex flex-col justify-start">
+                                  <ul className="list-disc pl-4 space-y-2">
+                                      {slide.content.map((point, i) => (
+                                          <li key={i} className="leading-relaxed" style={{ fontSize: contentSize }}>{point}</li>
+                                      ))}
+                                  </ul>
+                              </div>
+                              <div className="rounded-lg flex flex-col items-center justify-center border-2 border-dashed min-h-[150px]"
+                                  style={{ backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(226,232,240,0.5)', borderColor: theme.accentColor }}>
+                                  <ImageIcon className="w-8 h-8 opacity-50 mb-2" />
+                                  <span className="text-xs opacity-50 font-medium">Image</span>
+                              </div>
+                          </div>
+                      )}
+
+                      {slide.layout === 'two-col' && (
+                          <div className="grid grid-cols-2 gap-6 h-full">
+                              <ul className="list-disc pl-4 space-y-2">
+                                  {slide.content.slice(0, Math.ceil(slide.content.length / 2)).map((point, i) => (
+                                      <li key={i} className="leading-relaxed" style={{ fontSize: contentSize }}>{point}</li>
+                                  ))}
+                              </ul>
+                              <ul className="list-disc pl-4 space-y-2">
+                                  {slide.content.slice(Math.ceil(slide.content.length / 2)).map((point, i) => (
+                                      <li key={i} className="leading-relaxed" style={{ fontSize: contentSize }}>{point}</li>
+                                  ))}
+                              </ul>
+                          </div>
+                      )}
+
+                      {slide.layout === 'three-col' && (
+                          <div className="grid grid-cols-3 gap-4 h-full">
+                              {[0, 1, 2].map(colIdx => {
+                                  const chunkSize = Math.ceil(slide.content.length / 3);
+                                  const colContent = slide.content.slice(colIdx * chunkSize, (colIdx + 1) * chunkSize);
+                                  return (
+                                      <ul key={colIdx} className="list-disc pl-4 space-y-2">
+                                          {colContent.map((point, i) => (
+                                              <li key={i} className="leading-relaxed" style={{ fontSize: `calc(${contentSize} * 0.8)` }}>{point}</li>
+                                          ))}
+                                      </ul>
+                                  )
+                              })}
+                          </div>
+                      )}
+
+                      {slide.layout === 'comparison' && (
+                          <div className="grid grid-cols-2 gap-0 h-full border rounded-lg overflow-hidden" style={{ borderColor: isDarkTheme ? 'rgba(255,255,255,0.2)' : 'rgba(203,213,225,0.5)'}}>
+                              {[0, 1].map(colIdx => {
+                                  const chunkSize = Math.ceil(slide.content.length / 2);
+                                  const colContent = slide.content.slice(colIdx * chunkSize, (colIdx + 1) * chunkSize);
+                                  return (
+                                      <div key={colIdx} className={`p-3 ${colIdx === 0 ? (isDarkTheme ? 'bg-white/10' : 'bg-slate-50/50') : 'bg-transparent'} flex flex-col h-full`}>
+                                          <h4 className="font-bold border-b pb-2 mb-2" style={{ color: theme.accentColor, borderColor: isDarkTheme ? 'rgba(255,255,255,0.2)' : '#e2e8f0' }}>
+                                              {colContent[0] || 'Header'}
+                                          </h4>
+                                          <ul className="list-disc pl-4 space-y-2 flex-grow">
+                                              {colContent.slice(1).map((point, i) => (
+                                                  <li key={i} className="leading-relaxed" style={{ fontSize: `calc(${contentSize} * 0.9)` }}>{point}</li>
+                                              ))}
+                                          </ul>
+                                      </div>
+                                  )
+                              })}
+                          </div>
+                      )}
+
+                      {slide.layout === 'timeline' && (
+                          <div className="flex flex-col h-full gap-3 relative pl-4">
+                              <div className="absolute left-[21px] top-2 bottom-2 w-0.5" style={{ backgroundColor: theme.accentColor }}></div>
+                              {slide.content.map((point, i) => (
+                                  <div key={i} className="flex items-start gap-3 relative z-10">
+                                      <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0 border-2 border-white shadow-sm" style={{ backgroundColor: theme.accentColor }}></div>
+                                      <span className="leading-relaxed" style={{ fontSize: contentSize }}>{point}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+
+                      {slide.layout === 'caption' && (
+                          <div className="flex flex-col h-full gap-4">
+                              <div className="rounded-lg flex-grow flex flex-col items-center justify-center border-2 border-dashed min-h-[150px]"
+                                  style={{ backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(226,232,240,0.5)', borderColor: theme.accentColor }}>
+                                  <ImageIcon className="w-8 h-8 opacity-50" />
+                              </div>
+                              <div className="text-center" style={{ fontSize: contentSize }}>
+                                  {slide.content.join('. ')}
+                              </div>
+                          </div>
+                      )}
+
+                      {slide.layout === 'big-number' && (
+                          <div className="h-full flex flex-col items-center justify-center">
+                              <span className="font-bold leading-none" style={{ fontSize: `calc(${contentSize} * 6)`, color: theme.accentColor }}>
+                                  {slide.content[0] || '0'}
+                              </span>
+                              <p className="mt-4 text-center opacity-80" style={{ fontSize: `calc(${contentSize} * 1.2)` }}>
+                                  {slide.content.slice(1).join(' ')}
+                              </p>
+                          </div>
+                      )}
+
+                      {/* ---------- NEW LAYOUT RENDERING ---------- */}
+                      {slide.layout === 'kanban' && (
+                        <div className="grid grid-cols-2 gap-3 h-full">
+                          <div className="bg-white/40 dark:bg-black/20 rounded p-2 border" style={{borderColor: theme.accentColor}}>
+                            <h4 className="font-bold text-xs uppercase mb-2" style={{color: theme.accentColor}}>Todo</h4>
+                            <ul className="space-y-1 text-sm">
+                              {slide.content.slice(0, Math.ceil(slide.content.length/2)).map((p,i) => <li key={i} className="bg-white/50 p-1 rounded text-xs">• {p}</li>)}
+                            </ul>
+                          </div>
+                          <div className="bg-white/40 dark:bg-black/20 rounded p-2 border" style={{borderColor: theme.accentColor}}>
+                            <h4 className="font-bold text-xs uppercase mb-2" style={{color: theme.accentColor}}>Done</h4>
+                            <ul className="space-y-1 text-sm">
+                              {slide.content.slice(Math.ceil(slide.content.length/2)).map((p,i) => <li key={i} className="bg-white/50 p-1 rounded text-xs">• {p}</li>)}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
+                      {slide.layout === 'roadmap' && (
+                        <div className="flex flex-col gap-3 h-full justify-center">
+                          {slide.content.slice(0,3).map((phase, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <div className="w-16 text-xs font-bold" style={{color: theme.accentColor}}>Q{idx+1}</div>
+                              <div className="flex-1 h-4 bg-white/30 rounded-full overflow-hidden border" style={{borderColor: theme.accentColor}}>
+                                <div className="h-full rounded-full" style={{width: `${70 - idx*15}%`, backgroundColor: theme.accentColor}}></div>
+                              </div>
+                              <span className="text-xs">{phase}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {slide.layout === 'stats' && (
+                        <div className="grid grid-cols-2 gap-3 h-full">
+                          {slide.content.map((stat,i) => {
+                            const val = stat.split(':')[1] || stat;
+                            const label = stat.split(':')[0] || 'metric';
+                            return (
+                              <div key={i} className="bg-white/30 p-2 rounded-lg text-center border" style={{borderColor: theme.accentColor}}>
+                                <div className="text-xl font-bold" style={{color: theme.titleColor}}>{val}</div>
+                                <div className="text-xs opacity-70">{label}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {slide.layout === 'pro-con' && (
+                        <div className="grid grid-cols-2 gap-2 h-full">
+                          <div className="p-2 rounded bg-green-100/40">
+                            <h4 className="font-bold text-sm mb-1" style={{color: theme.accentColor}}>✅ Pros</h4>
+                            <ul className="list-disc pl-4 text-xs">
+                              {slide.content.slice(0, Math.floor(slide.content.length/2)).map((p,i) => <li key={i}>{p}</li>)}
+                            </ul>
+                          </div>
+                          <div className="p-2 rounded bg-red-100/40">
+                            <h4 className="font-bold text-sm mb-1" style={{color: theme.accentColor}}>❌ Cons</h4>
+                            <ul className="list-disc pl-4 text-xs">
+                              {slide.content.slice(Math.floor(slide.content.length/2)).map((p,i) => <li key={i}>{p}</li>)}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
+                      {slide.layout === 'gantt' && (
+                        <div className="flex flex-col gap-2 h-full">
+                          {slide.content.slice(0,4).map((task,i) => (
+                            <div key={i} className="flex items-center gap-1 text-xs">
+                              <span className="w-16 truncate">{task.substring(0,8)}</span>
+                              <div className="flex-1 h-4 bg-white/30 border rounded" style={{borderColor: theme.accentColor}}>
+                                <div className="h-full rounded" style={{width: `${(i+1)*20}%`, backgroundColor: theme.accentColor}}></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {slide.layout === 'quote-card' && (
+                        <div className="h-full flex items-center justify-center p-4 italic text-center border-l-4" style={{borderColor: theme.accentColor, background: 'rgba(255,255,240,0.3)'}}>
+                          <div>
+                            <Quote className="w-6 h-6 mx-auto mb-2 opacity-30" style={{color: theme.accentColor}} />
+                            <p className="text-sm" style={{fontSize: contentSize}}>“{slide.content[0] || 'inspire'}”</p>
+                            <p className="text-xs mt-2 opacity-60">— {slide.content[1] || 'speaker'}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {slide.layout === 'feature-grid' && (
+                        <div className="grid grid-cols-2 gap-3 h-full">
+                          {slide.content.slice(0,4).map((feat,i) => (
+                            <div key={i} className="border rounded p-2 text-center" style={{borderColor: theme.accentColor}}>
+                              <div className="text-lg mb-1">⚡</div>
+                              <div className="text-xs font-medium">{feat}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                  </div>
+                </div>
+              </div>
+          </div>
+        );
+      };
+
+      // --- Services (unchanged, same as original) ---
+
+      const parseCsvToSlides = (csvText) => {
+        return new Promise((resolve, reject) => {
+          Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              if (results.errors.length > 0 && results.data.length === 0) {
+                reject(new Error("Failed to parse CSV. Please check the format."));
+                return;
+              }
+
+              const parsedSlides = results.data.map((row) => {
+                const title = row['Title'] || row['title'] || 'Untitled Slide';
+                const contentRaw = row['Content'] || row['content'] || '';
+                const notes = row['Speaker Notes'] || row['speaker notes'] || row['Notes'] || row['notes'] || '';
+
+                let content = [];
+                if (contentRaw.includes('|')) {
+                  content = contentRaw.split('|');
+                } else if (contentRaw.includes(';')) {
+                  content = contentRaw.split(';');
+                } else {
+                  content = [contentRaw];
+                }
+
+                return {
+                  id: uuidv4(),
+                  title: title.trim(),
+                  content: content.map(c => c.trim()).filter(c => c.length > 0),
+                  speakerNotes: notes.trim(),
+                  layout: 'list' // default
+                };
+              });
+
+              resolve(parsedSlides);
+            },
+            error: (err) => {
+              reject(err);
+            }
+          });
+        });
+      };
+
+      const getFontScale = (sizeLevel) => {
+        switch(sizeLevel) {
+          case 1: return 0.75;
+          case 2: return 1.0;
+          case 3: return 1.25;
+          case 4: return 1.5;
+          case 5: return 1.75;
+          default: return 1.0;
+        }
+      };
+
+      const generatePptxFile = async (slides, style, filename = 'presentation.pptx') => {
+        const pres = new PptxGenJS();
+        
+        const theme = THEMES.find(t => t.id === style.themeId) || THEMES[0];
+        const scale = getFontScale(style.textSize);
+
+        pres.author = APP_NAME;
+        pres.title = filename;
+        pres.layout = 'LAYOUT_16x9';
+
+        const bg = theme.backgroundColor.replace('#', '');
+        const titleColor = theme.titleColor.replace('#', '');
+        const contentColor = theme.contentColor.replace('#', '');
+        const accentColor = theme.accentColor.replace('#', '');
+
+        let fontFace = 'Arial';
+        if (theme.fontFamily === 'Times' || theme.fontFamily === 'Playfair Display' || theme.fontFamily === 'Merriweather') fontFace = 'Times New Roman';
+        if (theme.fontFamily === 'Courier') fontFace = 'Courier New';
+        if (theme.fontFamily === 'Comic Neue' || theme.fontFamily === 'Patrick Hand') fontFace = 'Comic Sans MS';
+        if (theme.fontFamily === 'Montserrat' || theme.fontFamily === 'Poppins' || theme.fontFamily === 'Work Sans') fontFace = 'Verdana';
+
+        slides.forEach((slideData) => {
+          const slide = pres.addSlide();
+          
+          if (theme.backgroundImageUrl) {
+            slide.addImage({ 
+              path: theme.backgroundImageUrl, 
+              x: 0, y: 0, w: '100%', h: '100%' 
+            });
+            slide.addShape(pres.ShapeType.rect, { 
+              x: 0, y: 0, w: '100%', h: '100%', 
+              fill: { color: 'FFFFFF', transparency: 10 } 
+            });
+          } else {
+            slide.background = { color: bg };
+          }
+
+          if (theme.isBrowserWindow) {
+            slide.addShape(pres.ShapeType.rect, { x: 0.5, y: 0.5, w: 9, h: 0.6, fill: { color: theme.id === 'retro-terminal' ? '333333' : 'E2E8F0' }, line: { color: 'CBD5E1' } });
+            slide.addShape(pres.ShapeType.oval, { x: 0.7, y: 0.7, w: 0.2, h: 0.2, fill: { color: 'EF4444' } });
+            slide.addShape(pres.ShapeType.oval, { x: 1.0, y: 0.7, w: 0.2, h: 0.2, fill: { color: 'F59E0B' } });
+            slide.addShape(pres.ShapeType.oval, { x: 1.3, y: 0.7, w: 0.2, h: 0.2, fill: { color: '22C55E' } });
+            slide.addShape(pres.ShapeType.rect, { x: 0.5, y: 1.1, w: 9, h: 5.5, fill: { color: theme.id === 'retro-terminal' ? '000000' : 'FFFFFF' }, line: { color: 'CBD5E1' } });
+          }
+
+          if (theme.isFolderTab) {
+              slide.addShape(pres.ShapeType.roundRect, { x: 0.5, y: 0.5, w: 3, h: 0.8, fill: { color: bg }, r: 10 });
+              slide.addShape(pres.ShapeType.rect, { x: 0.5, y: 1.0, w: 9, h: 5.5, fill: { color: theme.id === 'project-file' ? 'FFFFFF' : 'FFFFFF' }, line: { color: accentColor } });
+          }
+
+          if (theme.showBorderFrame && !theme.isBrowserWindow && !theme.isFolderTab) {
+            slide.addShape(pres.ShapeType.rect, {
+              x: 0.2, y: 0.2, w: '96%', h: '93%',
+              fill: { type: 'none' },
+              line: { 
+                  color: accentColor, 
+                  width: 4, 
+                  dashType: theme.borderStyle === 'dashed' ? 'dash' : (theme.borderStyle === 'dotted' ? 'sysDot' : 'solid') 
+              }
+            });
+          }
+
+          const align = theme.alignment;
+          const titleSize = 32 * scale;
+          const contentSize = 18 * scale;
+          
+          const startY = (theme.isBrowserWindow || theme.isFolderTab) ? 1.3 : 0.5;
+          const contentStartY = startY + 1.2;
+
+          if (slideData.layout !== 'title-center') {
+              slide.addText(slideData.title, {
+                  x: 0.5, y: startY, w: '90%', h: 1,
+                  fontSize: titleSize,
+                  fontFace: fontFace,
+                  color: titleColor,
+                  bold: true,
+                  align: align,
+              });
+          }
+
+          if (slideData.layout === 'title-center') {
+              slide.addText(slideData.title, {
+                  x: 0.5, y: 0, w: '90%', h: '100%',
+                  fontSize: titleSize * 2,
+                  fontFace: fontFace,
+                  color: titleColor,
+                  bold: true,
+                  align: 'center',
+                  valign: 'middle'
+              });
+          } else if (slideData.layout === 'quote') {
+              const quoteText = slideData.content.join('\n');
+              slide.addText(`"${quoteText}"`, {
+                  x: 1, y: contentStartY, w: '80%', h: 4,
+                  fontSize: titleSize * 1.2,
+                  fontFace: fontFace,
+                  color: accentColor,
+                  align: 'center',
+                  italic: true
+              });
+          } else if (slideData.layout === 'paragraph') {
+              const paraText = slideData.content.join(' ');
+              slide.addText(paraText, {
+                  x: 0.8, y: contentStartY, w: '85%', h: 5,
+                  fontSize: contentSize,
+                  fontFace: fontFace,
+                  color: contentColor,
+                  align: align,
+                  paraSpaceAfter: 10
+              });
+          } else if (slideData.layout === 'two-col') {
+              const half = Math.ceil(slideData.content.length / 2);
+              const col1 = slideData.content.slice(0, half);
+              const col2 = slideData.content.slice(half);
+
+              const bullets1 = col1.map(text => ({ text: text.trim(), options: { fontSize: contentSize, color: contentColor, bullet: true, breakLine: true, fontFace: fontFace } }));
+              const bullets2 = col2.map(text => ({ text: text.trim(), options: { fontSize: contentSize, color: contentColor, bullet: true, breakLine: true, fontFace: fontFace } }));
+
+              slide.addText(bullets1, { x: 0.5, y: contentStartY, w: '45%', h: 5, align: 'left', valign: 'top' });
+              slide.addText(bullets2, { x: 5.0, y: contentStartY, w: '45%', h: 5, align: 'left', valign: 'top' });
+          } else if (slideData.layout === 'three-col') {
+              const chunkSize = Math.ceil(slideData.content.length / 3);
+              const col1 = slideData.content.slice(0, chunkSize);
+              const col2 = slideData.content.slice(chunkSize, chunkSize * 2);
+              const col3 = slideData.content.slice(chunkSize * 2);
+
+              const createBullets = (arr) => arr.map(text => ({ text: text.trim(), options: { fontSize: contentSize * 0.8, color: contentColor, bullet: true, breakLine: true, fontFace: fontFace } }));
+
+              slide.addText(createBullets(col1), { x: 0.5, y: contentStartY, w: '30%', h: 5, align: 'left', valign: 'top' });
+              slide.addText(createBullets(col2), { x: 3.8, y: contentStartY, w: '30%', h: 5, align: 'left', valign: 'top' });
+              slide.addText(createBullets(col3), { x: 7.1, y: contentStartY, w: '30%', h: 5, align: 'left', valign: 'top' });
+          } else if (slideData.layout === 'comparison') {
+              const half = Math.ceil(slideData.content.length / 2);
+              const col1 = slideData.content.slice(0, half);
+              const col2 = slideData.content.slice(half);
+
+              const createCompCol = (arr, xPos) => {
+                  if (arr.length === 0) return;
+                  slide.addText(arr[0], { x: xPos, y: contentStartY, w: '45%', h: 0.5, fontSize: contentSize, color: accentColor, bold: true, align: 'center', fontFace: fontFace });
+                  const bullets = arr.slice(1).map(text => ({ text: text.trim(), options: { fontSize: contentSize * 0.9, color: contentColor, bullet: true, breakLine: true, fontFace: fontFace } }));
+                  if (bullets.length > 0) {
+                      slide.addText(bullets, { x: xPos, y: contentStartY + 0.6, w: '45%', h: 4.5, align: 'left', valign: 'top' });
+                  }
+              };
+
+              createCompCol(col1, 0.5);
+              createCompCol(col2, 5.0);
+              slide.addShape(pres.ShapeType.line, { x: 5.0, y: contentStartY, w: 0, h: 4.5, line: { color: 'E2E8F0', width: 1 } });
+          } else if (slideData.layout === 'timeline') {
+              const lineX = 1.0;
+              const lineYStart = contentStartY;
+              const lineYEnd = 6.5;
+              slide.addShape(pres.ShapeType.line, { x: lineX, y: lineYStart, w: 0, h: lineYEnd - lineYStart, line: { color: accentColor, width: 2 } });
+              let currentY = lineYStart;
+              const spacing = (lineYEnd - lineYStart) / Math.max(slideData.content.length, 1);
+              slideData.content.forEach((point) => {
+                  slide.addShape(pres.ShapeType.oval, { x: lineX - 0.1, y: currentY, w: 0.2, h: 0.2, fill: { color: accentColor } });
+                  slide.addText(point, { x: lineX + 0.3, y: currentY - 0.15, w: 8, h: 0.5, fontSize: contentSize, color: contentColor, fontFace: fontFace });
+                  currentY += spacing;
+              });
+          } else if (slideData.layout === 'split') {
+              const bullets = slideData.content.map(text => ({
+                  text: text.trim(),
+                  options: { fontSize: contentSize, color: contentColor, bullet: true, breakLine: true, fontFace: fontFace }
+              }));
+              slide.addText(bullets, { x: 0.5, y: contentStartY, w: '45%', h: 5, align: 'left', valign: 'top' });
+              slide.addShape(pres.ShapeType.rect, { x: 5.5, y: contentStartY, w: 4, h: 4, fill: { color: 'E0E0E0' }, line: { color: 'CCCCCC' } });
+              slide.addText("Image", { x: 5.5, y: contentStartY + 1.8, w: 4, h: 1, align: 'center', color: '999999' });
+          } else if (slideData.layout === 'caption') {
+              slide.addShape(pres.ShapeType.rect, { x: 2.5, y: 1.2, w: 5, h: 3, fill: { color: 'E0E0E0' }, line: { color: 'CCCCCC' } });
+              slide.addText("Image Placeholder", { x: 2.5, y: 2.5, w: 5, h: 1, align: 'center', color: '999999' });
+              const bullets = slideData.content.map(text => ({
+                  text: text.trim(),
+                  options: { fontSize: contentSize, color: contentColor, bullet: false, breakLine: true, fontFace: fontFace }
+              }));
+              slide.addText(bullets, { x: 1.5, y: 4.5, w: '70%', h: 2, align: 'center', valign: 'top' });
+          } else if (slideData.layout === 'big-number') {
+              const bigNum = slideData.content[0] || "0";
+              const desc = slideData.content.slice(1).join('\n');
+              slide.addText(bigNum, { x: 0, y: 1.5, w: '100%', h: 2, fontSize: 80 * scale, color: accentColor, align: 'center', bold: true, fontFace: fontFace });
+              slide.addText(desc, { x: 1, y: 3.5, w: '80%', h: 2, fontSize: contentSize, color: contentColor, align: 'center', fontFace: fontFace });
+          } else {
+              const bullets = slideData.content.map(text => ({
+                  text: text.trim(),
+                  options: { fontSize: contentSize, color: contentColor, bullet: true, breakLine: true, fontFace: fontFace }
+              }));
+              slide.addText(bullets, { x: 0.5, y: contentStartY, w: '90%', h: '70%', align: align, valign: 'top' });
+          }
+        });
+
+        await pres.writeFile({ fileName: filename });
+      };
+
+      const generatePdfFile = (slides, style, filename = 'presentation.pdf') => {
+        const theme = THEMES.find(t => t.id === style.themeId) || THEMES[0];
+        const scale = getFontScale(style.textSize);
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [13.333, 7.5] });
+        const hexToRgb = (hex) => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 0, g: 0, b: 0 };
+        };
+        const bgRgb = hexToRgb(theme.backgroundColor);
+        const titleRgb = hexToRgb(theme.titleColor);
+        const contentRgb = hexToRgb(theme.contentColor);
+        const accentRgb = hexToRgb(theme.accentColor);
+        let fontName = 'helvetica';
+        if (theme.fontFamily === 'Times' || theme.fontFamily === 'Playfair Display' || theme.fontFamily === 'Merriweather') fontName = 'times';
+        if (theme.fontFamily === 'Courier') fontName = 'courier';
+
+        slides.forEach((slide, index) => {
+          if (index > 0) doc.addPage([13.333, 7.5], 'landscape');
+          
+          doc.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
+          doc.rect(0, 0, 13.333, 7.5, 'F');
+          
+          if (theme.showHeaderBar) {
+              doc.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+              doc.rect(0, 0, 13.333, 1.2, 'F');
+          }
+          if (theme.showBorderFrame) {
+              doc.setDrawColor(accentRgb.r, accentRgb.g, accentRgb.b);
+              doc.setLineWidth(0.05);
+              doc.rect(0.2, 0.2, 12.93, 7.1, 'S');
+          }
+          
+          const titleIsOnDark = theme.showHeaderBar && theme.id === 'corporate';
+          if (titleIsOnDark) doc.setTextColor(255, 255, 255);
+          else doc.setTextColor(titleRgb.r, titleRgb.g, titleRgb.b);
+          doc.setFont(fontName, "bold");
+          const titleSize = 28 * scale;
+          doc.setFontSize(titleSize);
+          const align = theme.alignment;
+          let xPos = 0.5;
+          if (align === 'center') xPos = 13.333 / 2;
+          if (align === 'right') xPos = 12.8;
+          const titleY = theme.showHeaderBar ? 0.8 : 1.0;
+          
+          if (slide.layout !== 'title-center') {
+              doc.text(slide.title, xPos, titleY, { align: align });
+          }
+
+          doc.setFont(fontName, "normal");
+          const contentSize = 16 * scale;
+          doc.setFontSize(contentSize);
+          doc.setTextColor(contentRgb.r, contentRgb.g, contentRgb.b);
+          const contentY = theme.showHeaderBar ? 1.8 : 2.0;
+          const lineHeight = (contentSize/72) * 1.5;
+
+          if (slide.layout === 'title-center') {
+              doc.setFontSize(titleSize * 2);
+              doc.setFont(fontName, "bold");
+              doc.setTextColor(titleRgb.r, titleRgb.g, titleRgb.b);
+              doc.text(slide.title, 13.333/2, 3.75, { align: 'center', baseline: 'middle' });
+          } else if (slide.layout === 'quote') {
+              doc.setFont(fontName, "italic");
+              doc.setFontSize(titleSize * 1.2);
+              doc.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+              const quote = `"${slide.content.join(' ')}"`;
+              const lines = doc.splitTextToSize(quote, 10);
+              doc.text(lines, 13.333/2, 3.75, { align: 'center' });
+          } else if (slide.layout === 'paragraph') {
+              const text = slide.content.join(' ');
+              const lines = doc.splitTextToSize(text, 12);
+              doc.text(lines, xPos, contentY, { align: align });
+          } else if (slide.layout === 'two-col' || slide.layout === 'comparison') {
+              const half = Math.ceil(slide.content.length / 2);
+              const col1 = slide.content.slice(0, half);
+              const col2 = slide.content.slice(half);
+              const renderCol = (items, x) => {
+                  let cy = contentY;
+                  items.forEach((pt, i) => {
+                      const isHeader = slide.layout === 'comparison' && i === 0;
+                      doc.setFont(fontName, isHeader ? "bold" : "normal");
+                      if(isHeader) doc.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                      else doc.setTextColor(contentRgb.r, contentRgb.g, contentRgb.b);
+                      const prefix = isHeader ? '' : '• ';
+                      const lines = doc.splitTextToSize(prefix + pt, 5.5);
+                      doc.text(lines, x, cy);
+                      cy += lines.length * lineHeight;
+                  });
+              };
+              renderCol(col1, 0.5);
+              renderCol(col2, 6.8);
+          } else if (slide.layout === 'three-col') {
+              const chunkSize = Math.ceil(slide.content.length / 3);
+              const col1 = slide.content.slice(0, chunkSize);
+              const col2 = slide.content.slice(chunkSize, chunkSize * 2);
+              const col3 = slide.content.slice(chunkSize * 2);
+              const renderCol = (items, x) => {
+                  let cy = contentY;
+                  items.forEach((pt) => {
+                      const lines = doc.splitTextToSize('• ' + pt, 3.5);
+                      doc.text(lines, x, cy);
+                      cy += lines.length * lineHeight;
+                  });
+              };
+              renderCol(col1, 0.5);
+              renderCol(col2, 4.8);
+              renderCol(col3, 9.1);
+          } else if (slide.layout === 'split') {
+              let curY = contentY;
+              slide.content.forEach(pt => {
+                  const line = `• ${pt}`;
+                  const lines = doc.splitTextToSize(line, 5.5);
+                  doc.text(lines, 0.5, curY);
+                  curY += lines.length * lineHeight;
+              });
+              doc.setFillColor(230, 230, 230);
+              doc.rect(6.5, contentY, 6, 4, 'F');
+              doc.setTextColor(150, 150, 150);
+              doc.text("Image Placeholder", 9.5, contentY + 2, { align: 'center' });
+          } else if (slide.layout === 'caption') {
+              doc.setFillColor(230, 230, 230);
+              doc.rect(4.1, 1.2, 5, 3, 'F');
+              doc.setTextColor(150, 150, 150);
+              doc.text("Image Placeholder", 6.6, 2.7, { align: 'center' });
+              doc.setFont(fontName, "normal");
+              doc.setTextColor(contentRgb.r, contentRgb.g, contentRgb.b);
+              const text = slide.content.join(' ');
+              const lines = doc.splitTextToSize(text, 10);
+              doc.text(lines, 6.6, 4.8, { align: 'center' });
+          } else if (slide.layout === 'big-number') {
+              doc.setFont(fontName, "bold");
+              doc.setFontSize(titleSize * 3);
+              doc.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+              doc.text(slide.content[0] || '0', 13.333/2, 3.0, { align: 'center' });
+              doc.setFont(fontName, "normal");
+              doc.setFontSize(contentSize * 1.2);
+              doc.setTextColor(contentRgb.r, contentRgb.g, contentRgb.b);
+              doc.text(slide.content.slice(1).join(' '), 13.333/2, 4.5, { align: 'center' });
+          } else if (slide.layout === 'timeline') {
+              const startY = contentY;
+              const spacing = 0.8;
+              doc.setDrawColor(accentRgb.r, accentRgb.g, accentRgb.b);
+              doc.setLineWidth(0.02);
+              doc.line(1.0, startY, 1.0, startY + (slide.content.length * spacing));
+              slide.content.forEach((pt, i) => {
+                  const y = startY + (i * spacing);
+                  doc.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                  doc.circle(1.0, y, 0.05, 'F');
+                  doc.text(pt, 1.3, y + 0.02);
+              });
+          } else {
+              let curY = contentY;
+              slide.content.forEach(pt => {
+                  const line = `• ${pt}`;
+                  const lines = doc.splitTextToSize(line, 12);
+                  doc.text(lines, xPos, curY, { align: align });
+                  curY += lines.length * lineHeight;
+              });
+          }
+        });
+        doc.save(filename);
+      };
+
+      // --- Main App ---
+
+      function App() {
+        const [csvInput, setCsvInput] = useState('');
+        const [slides, setSlides] = useState([]);
+        const [parseStatus, setParseStatus] = useState('idle');
+        const [errorMessage, setErrorMessage] = useState(null);
+        const [isGenerating, setIsGenerating] = useState(false);
+        const [view, setView] = useState('editor');
+        const [style, setStyle] = useState({ themeId: 'corporate', textSize: 2 });
+
+        useEffect(() => {
+          if (csvInput === '' && slides.length === 0) {
+            // idle
+          }
+        }, []);
+
+        const handleInputChange = (e) => {
+          setCsvInput(e.target.value);
+          if (e.target.value.trim() === '') {
+            setSlides([]);
+            setParseStatus('idle');
+            setErrorMessage(null);
+            return;
+          }
+        };
+
+        const processCsv = async () => {
+          if (!csvInput.trim()) return;
+
+          try {
+            setParseStatus('idle');
+            const result = await parseCsvToSlides(csvInput);
+            setSlides(result);
+            setParseStatus('success');
+            setErrorMessage(null);
+            setView('preview');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } catch (err) {
+            setParseStatus('error');
+            setErrorMessage(err.message || "Unknown parsing error");
+            setSlides([]);
+          }
+        };
+
+        const handleFileUpload = (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const text = event.target?.result;
+            setCsvInput(text);
+            parseCsvToSlides(text)
+              .then(res => {
+                setSlides(res);
+                setParseStatus('success');
+                setErrorMessage(null);
+                setView('preview');
+              })
+              .catch(err => {
+                setParseStatus('error');
+                setErrorMessage(err.message);
+              });
+          };
+          reader.readAsText(file);
+          e.target.value = '';
+        };
+
+        const handleLayoutChange = (id, newLayout) => {
+          setSlides(prevSlides => 
+              prevSlides.map(slide => 
+                  slide.id === id ? { ...slide, layout: newLayout } : slide
+              )
+          );
+        };
+
+        const handleDownloadPptx = async () => {
+          if (slides.length === 0) return;
+          setIsGenerating(true);
+          try {
+            await generatePptxFile(slides, style, `presentation-${new Date().getTime()}.pptx`);
+          } catch (error) {
+            console.error("Failed to generate PPTX", error);
+            alert("Failed to generate PowerPoint file.");
+          } finally {
+            setIsGenerating(false);
+          }
+        };
+
+        const handleDownloadPdf = async () => {
+          if (slides.length === 0) return;
+          setIsGenerating(true);
+          try {
+            generatePdfFile(slides, style, `presentation-${new Date().getTime()}.pdf`);
+          } catch (error) {
+            console.error("Failed to generate PDF", error);
+            alert("Failed to generate PDF file.");
+          } finally {
+            setIsGenerating(false);
+          }
+        };
+
+        const loadExample = () => {
+          setCsvInput(DEFAULT_CSV_PLACEHOLDER);
+        };
+
+        const clearAll = () => {
+          setCsvInput('');
+          setSlides([]);
+          setParseStatus('idle');
+          setErrorMessage(null);
+        };
+
+        return (
+          <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('editor')}>
+                  <div className="bg-indigo-600 p-2 rounded-lg">
+                    <Presentation className="w-5 h-5 text-white" />
+                  </div>
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900 hidden sm:block">
+                    CSV to PowerPoint
+                  </h1>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <a href="https://chat.openai.com" target="_blank" rel="noreferrer" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden md:block">
+                    Open ChatGPT
+                  </a>
+                  {view === 'preview' && (
+                    <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                      <Button variant="outline" size="md" icon={<FileType className="w-4 h-4" />} onClick={handleDownloadPdf} disabled={slides.length === 0} isLoading={isGenerating}>
+                        PDF
+                      </Button>
+                      <Button variant="primary" size="md" icon={<Download className="w-4 h-4" />} onClick={handleDownloadPptx} disabled={slides.length === 0} isLoading={isGenerating}>
+                        PPTX
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+              {view === 'editor' && (
+                <div className="max-w-5xl mx-auto flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="text-center mb-4">
+                    <h2 className="text-3xl font-bold text-slate-900 mb-2">Create Presentations Instantly</h2>
+                    <p className="text-slate-600 max-w-xl mx-auto">
+                      Paste your content below or upload a CSV file. We'll format it into a professional slide deck for you.
+                    </p>
+                  </div>
+                  <PromptGenerator />
+                  <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-slate-500" />
+                        <h2 className="font-semibold text-slate-800">CSV Input</h2>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={loadExample} className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
+                          Load Example
+                        </button>
+                        {csvInput && (
+                           <button onClick={clearAll} className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors flex items-center gap-1">
+                             <Trash2 className="w-3 h-3" /> Clear
+                           </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-4 flex-grow flex flex-col gap-4">
+                      <textarea
+                        value={csvInput}
+                        onChange={handleInputChange}
+                        placeholder={`Paste your CSV here...\n\nExample:\nTitle,Content\nSlide 1,Bullet 1|Bullet 2`}
+                        className="w-full h-80 p-4 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono text-sm resize-y leading-relaxed text-slate-700 placeholder:text-slate-400"
+                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Button variant="outline" onClick={() => document.getElementById('file-upload')?.click()} icon={<FileUp className="w-4 h-4" />} className="w-full justify-center py-3">
+                          Upload .CSV File
+                        </Button>
+                        <input id="file-upload" type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+                        <Button variant="primary" onClick={processCsv} disabled={!csvInput.trim()} icon={<ArrowRight className="w-4 h-4" />} className="w-full justify-center py-3">
+                          Generate Slides
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  {parseStatus === 'error' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 animate-pulse">
+                      <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h3 className="text-sm font-semibold text-red-800">Parsing Error</h3>
+                        <p className="text-sm text-red-600 mt-1">{errorMessage}</p>
+                        <p className="text-xs text-red-500 mt-2">Ensure your CSV headers match: Title, Content</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {view === 'preview' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-right-8 duration-500 h-full items-start">
+                  <div className="lg:col-span-3 lg:sticky lg:top-24 flex flex-col gap-6 order-2 lg:order-1">
+                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                             <Palette className="w-4 h-4 text-indigo-600" />
+                             Design & Theme (now 30+)
+                          </h3>
+                        </div>
+                        <div className="p-4">
+                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Theme</label>
+                          <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                              {THEMES.map(t => (
+                                  <button
+                                      key={t.id}
+                                      onClick={() => setStyle({...style, themeId: t.id})}
+                                      className={`w-full flex items-center gap-3 p-2 rounded-lg border-2 transition-all text-left group ${style.themeId === t.id ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}
+                                  >
+                                      <div className="w-10 h-10 rounded-md shadow-sm border border-slate-100 flex-shrink-0" style={{ background: t.gradientBackground || t.backgroundColor }}>
+                                          {t.showHeaderBar && <div className="w-full h-2" style={{ backgroundColor: t.accentColor }}></div>}
+                                      </div>
+                                      <div>
+                                          <div className="text-sm font-medium text-slate-700 group-hover:text-indigo-600 transition-colors">{t.name}</div>
+                                      </div>
+                                  </button>
+                              ))}
+                          </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-100">
+                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 block flex items-center justify-between">
+                              <span>Text Scaling</span>
+                              <span className="text-indigo-600">{style.textSize}x</span>
+                          </label>
+                          <div className="flex items-center gap-3">
+                              <Type className="w-3 h-3 text-slate-400" />
+                              <input type="range" min="1" max="5" step="1" value={style.textSize} onChange={(e) => setStyle({...style, textSize: parseInt(e.target.value)})} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                              <Type className="w-5 h-5 text-slate-600" />
+                          </div>
+                        </div>
+                     </div>
+                     <Button variant="ghost" onClick={() => setView('editor')} icon={<ArrowLeft className="w-4 h-4" />} className="w-full justify-start">
+                      Back to Editor
+                    </Button>
+                  </div>
+
+                  <div className="lg:col-span-9 flex flex-col gap-6 order-1 lg:order-2">
+                      <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                              <span className="bg-slate-200 text-slate-600 text-xs font-bold py-1 px-3 rounded-full">
+                                  {slides.length} Slides
+                              </span>
+                              <h2 className="text-lg font-bold text-slate-800">Preview (new layouts: kanban, roadmap, stats, pro-con, gantt, quote-card, feature-grid)</h2>
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 auto-rows-fr">
+                      {slides.map((slide, index) => (
+                          <SlideCard key={slide.id} slide={slide} index={index} style={style} onLayoutChange={handleLayoutChange} />
+                      ))}
+                      </div>
+                      <div className="mt-8 p-8 bg-slate-100 rounded-xl border border-slate-200 text-center">
+                          <h3 className="text-lg font-semibold text-slate-800 mb-2">Ready to present?</h3>
+                          <p className="text-slate-500 mb-4">Download your slides in your preferred format.</p>
+                          <div className="flex justify-center gap-4">
+                              <Button variant="outline" size="lg" icon={<FileType className="w-5 h-5" />} onClick={handleDownloadPdf} isLoading={isGenerating}>
+                                  Download PDF
+                              </Button>
+                              <Button variant="primary" size="lg" icon={<Download className="w-5 h-5" />} onClick={handleDownloadPptx} isLoading={isGenerating}>
+                                  Download PowerPoint
+                              </Button>
+                          </div>
+                      </div>
+                  </div>
+                </div>
+              )}
+            </main>
+            <footer className="bg-white border-t border-slate-200 py-8 mt-auto">
+              <div className="max-w-7xl mx-auto px-4 text-center">
+                <p className="text-sm text-slate-500">
+                  Arcane slides  I think, therefore I am · expanded themes + layouts
+                </p>
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      const root = createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
